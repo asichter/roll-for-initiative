@@ -18,6 +18,11 @@
 char history[16];
 char offset;
 
+uint8_t advantage = 0;
+uint8_t disadvantage = 0;
+uint8_t sign;
+uint16_t modifier = 0;
+
 
 // DEBUG
 /******************************************************************************
@@ -49,9 +54,12 @@ void TIM2_IRQHandler() {
 void setup_ports() {
     RCC -> AHB1ENR |= 0xf;
 
-    GPIOA -> MODER &= ~(0xc);
+    GPIOA -> MODER &= ~(0xcffc);
+    GPIOA -> MODER |= 0x8a50;
     GPIOA -> PUPDR &= ~(0xc);
     GPIOA -> PUPDR |= 0x4;
+    GPIOA -> AFR[0] &= ~(0xf0ff0000);
+    GPIOA -> AFR[0] |= 0x50550000;
 
     GPIOB -> MODER &= ~(0xff);
     GPIOB -> MODER |= 0x55;
@@ -71,9 +79,6 @@ void setup_ports() {
 
 void setup_exti1() {
     RCC -> APB2ENR |= 1 << 14;
-
-    //SYSCFG -> EXTICR[1] &= 0x00f0;
-    //SYSCFG -> EXTICR[1] &= 0x0020;
 
     EXTI -> FTSR |= 1 << 1;
     EXTI -> IMR |= 1 << 1;
@@ -103,6 +108,14 @@ void setup_uart5() {
 	NVIC -> ISER[1] |= 1 << 21;
 }
 
+void setup_spi1() {
+    RCC -> APB2ENR |= 1 << 12;
+
+    SPI1 -> CR2 |= 0x4;
+    SPI1 -> CR1 = 0xca3c;
+    SPI1 -> CR1 |= 1 << 6;
+}
+
 
 // REGULAR FUNCTIONS
 // Keyboard
@@ -122,14 +135,95 @@ void update_hist(int cols) {
     }
 }
 
+void advantage_pressed() {
+    advantage ^= 0x1;
+    disadvantage = 0;
+
+    // DEBUGGING
+    if(advantage == 1) {
+        printf("Rolling with advantage.\n");
+    }
+    else {
+        printf("Rolling without advantage.\n");
+    }
+}
+
+void disadvantage_pressed() {
+    disadvantage ^= 0x1;
+    advantage = 0;
+
+    // DEBUGGING
+    if(disadvantage == 1) {
+        printf("Rolling with disadvantage.\n");
+    }
+    else {
+        printf("Rolling without disadvantage.\n");
+    }
+}
+
+void number_pressed(uint8_t number) {
+    modifier = modifier * 10 + number;
+
+    // DEBUGGING
+    printf("Modifier set to %d.\n", modifier);
+}
+
+void sign_pressed(uint8_t s) {
+    sign = s;
+
+    // DEBUGGING
+    char si = s == 0 ? '+' : '-';
+    printf("Sign set to %c.\n", si);
+}
+
+void clear_pressed() {
+    modifier = 0;
+
+    // DEBUGGING
+    printf("Modifier set to %d.\n", modifier);
+}
+
 void handle_keypress(int cols) {
-	int row = offset & 3;
-	for(int i = 0; i < 4; i++) {
-		if(history[4 * row + i] == 0x3f) {
-			printf("Button %2d was pushed.\n", (4 * row + i));
-			break;
-		}
-	}
+    int row = offset & 3;
+    for(int i = 0; i < 4; i++) {
+        if(history[4 * row + i] == 0x3f) {
+            switch(4 * row + i) {
+            case 0:  number_pressed(1);
+                     break;
+            case 1:  number_pressed(2);
+                     break;
+            case 2:  number_pressed(3);
+                     break;
+            case 3:  sign_pressed(0);
+                     break;
+            case 4:  number_pressed(4);
+                     break;
+            case 5:  number_pressed(5);
+                     break;
+            case 6:  number_pressed(6);
+                     break;
+            case 7:  sign_pressed(1);
+                     break;
+            case 8:  number_pressed(7);
+                     break;
+            case 9:  number_pressed(8);
+                     break;
+            case 10: number_pressed(9);
+                     break;
+            case 11: advantage_pressed();
+                     break;
+            case 12: clear_pressed();
+                     break;
+            case 13: number_pressed(0);
+                     break;
+            case 14: printf("Pressed \'=\' button.\n");
+                     break;
+            case 15: disadvantage_pressed();
+                     break;
+            }
+            break;
+        }
+    }
 }
 
 // UART
@@ -193,5 +287,10 @@ int main(void) {
 	setup_ports();
 	setup_exti1();
 	setup_uart5();
+	setup_spi1();
 	setup_tim7();
+
+	for(;;) {
+	    asm volatile ("wfi");
+	}
 }
