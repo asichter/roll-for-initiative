@@ -112,8 +112,7 @@ void setup_spi1() {
     RCC -> APB2ENR |= 1 << 12;
 
     SPI1 -> CR2 |= 0x4;
-    SPI1 -> CR1 = 0xca3c;
-    SPI1 -> CR1 |= 1 << 6;
+    SPI1 -> CR1 = 0xc03c;
 }
 
 
