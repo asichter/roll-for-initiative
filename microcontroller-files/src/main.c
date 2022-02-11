@@ -8,20 +8,16 @@
   ******************************************************************************
 */
 
-
+#include "main.h"
 #include "stm32f4xx.h"
 #include "fifo.h"
 #include "tty.h"
+#include "lcd.h"
 #include <stdio.h>
 #include <string.h>
 
-char history[16];
-char offset;
-
-uint8_t advantage = 0;
-uint8_t disadvantage = 0;
-uint8_t sign;
-uint16_t modifier = 0;
+uint8_t history[16];
+uint8_t offset;
 
 
 // DEBUG
@@ -49,17 +45,23 @@ void TIM2_IRQHandler() {
 
 ******************************************************************************/
 
+// GLOBAL VARIABLES AND CONSTANTS
+const static char KEY_ARRAY[] = "123+456-789AC0=D";
+int mod = 0;
+int sub_mod = 0;
+int c_count = 0;
+uint8_t A = 0;
+uint8_t D = 0;
+uint8_t PKG = 0;
+uint8_t SIGN = 1;
 
 // SETUP FUNCTIONS
 void setup_ports() {
     RCC -> AHB1ENR |= 0xf;
 
-    GPIOA -> MODER &= ~(0xcffc);
-    GPIOA -> MODER |= 0x8a50;
+    GPIOA -> MODER &= ~(0xc);
     GPIOA -> PUPDR &= ~(0xc);
     GPIOA -> PUPDR |= 0x4;
-    GPIOA -> AFR[0] &= ~(0xf0ff0000);
-    GPIOA -> AFR[0] |= 0x50550000;
 
     GPIOB -> MODER &= ~(0xff);
     GPIOB -> MODER |= 0x55;
@@ -79,6 +81,9 @@ void setup_ports() {
 
 void setup_exti1() {
     RCC -> APB2ENR |= 1 << 14;
+
+    //SYSCFG -> EXTICR[1] &= 0x00f0;
+    //SYSCFG -> EXTICR[1] &= 0x0020;
 
     EXTI -> FTSR |= 1 << 1;
     EXTI -> IMR |= 1 << 1;
@@ -108,15 +113,58 @@ void setup_uart5() {
 	NVIC -> ISER[1] |= 1 << 21;
 }
 
-void setup_spi1() {
-    RCC -> APB2ENR |= 1 << 12;
-
-    SPI1 -> CR2 |= 0x4;
-    SPI1 -> CR1 = 0xc03c;
+// DISPLAY FUNCTIONS
+void display_settings() {
+    printf("Advantage: %2d\n", A);
+    printf("Disadvantage: %2d\n", D);
+    printf("Mod: %2d\n", mod);
+    printf("Submod: %2d\n", sub_mod);
+}
+void toggle_A() {
+    A ^= 0x1;
+    D = 0;
+    // Tell UI to display A flag
 }
 
+void toggle_D() {
+    D ^= 1;
+    A = 0;
+}
+
+void clear() {
+    if (c_count == 0) {
+        c_count++;
+        sub_mod = 0;
+    } else if (c_count == 1) {
+        c_count++;
+        sub_mod = 0;
+        mod = 0;
+    } else if (c_count > 1) {
+        c_count = 0;
+        A = 0;
+        D = 0;
+        sub_mod = 0;
+        mod = 0;
+    }
+}
 
 // REGULAR FUNCTIONS
+// Modifier Calculations
+void modifier(int num) {
+    sub_mod = (10 * sub_mod) + num;
+    if (sub_mod > 999)
+        sub_mod = (sub_mod/100)%10*100 + (sub_mod/10)%10*10 + (sub_mod%10);
+}
+
+void add_mod() {
+    if (SIGN == 1)
+        mod += sub_mod;
+    else
+        mod -= sub_mod;
+
+    sub_mod = 0;
+}
+
 // Keyboard
 void set_row() {
 	GPIOB -> BSRRH = 0xf;
@@ -134,95 +182,49 @@ void update_hist(int cols) {
     }
 }
 
-void advantage_pressed() {
-    advantage ^= 0x1;
-    disadvantage = 0;
-
-    // DEBUGGING
-    if(advantage == 1) {
-        printf("Rolling with advantage.\n");
-    }
-    else {
-        printf("Rolling without advantage.\n");
-    }
-}
-
-void disadvantage_pressed() {
-    disadvantage ^= 0x1;
-    advantage = 0;
-
-    // DEBUGGING
-    if(disadvantage == 1) {
-        printf("Rolling with disadvantage.\n");
-    }
-    else {
-        printf("Rolling without disadvantage.\n");
-    }
-}
-
-void number_pressed(uint8_t number) {
-    modifier = modifier * 10 + number;
-
-    // DEBUGGING
-    printf("Modifier set to %d.\n", modifier);
-}
-
-void sign_pressed(uint8_t s) {
-    sign = s;
-
-    // DEBUGGING
-    char si = s == 0 ? '+' : '-';
-    printf("Sign set to %c.\n", si);
-}
-
-void clear_pressed() {
-    modifier = 0;
-
-    // DEBUGGING
-    printf("Modifier set to %d.\n", modifier);
-}
-
 void handle_keypress(int cols) {
-    int row = offset & 3;
-    for(int i = 0; i < 4; i++) {
-        if(history[4 * row + i] == 0x3f) {
-            switch(4 * row + i) {
-            case 0:  number_pressed(1);
-                     break;
-            case 1:  number_pressed(2);
-                     break;
-            case 2:  number_pressed(3);
-                     break;
-            case 3:  sign_pressed(0);
-                     break;
-            case 4:  number_pressed(4);
-                     break;
-            case 5:  number_pressed(5);
-                     break;
-            case 6:  number_pressed(6);
-                     break;
-            case 7:  sign_pressed(1);
-                     break;
-            case 8:  number_pressed(7);
-                     break;
-            case 9:  number_pressed(8);
-                     break;
-            case 10: number_pressed(9);
-                     break;
-            case 11: advantage_pressed();
-                     break;
-            case 12: clear_pressed();
-                     break;
-            case 13: number_pressed(0);
-                     break;
-            case 14: printf("Pressed \'=\' button.\n");
-                     break;
-            case 15: disadvantage_pressed();
-                     break;
-            }
-            break;
-        }
-    }
+	int row = offset & 3;
+	for(int i = 0; i < 4; i++) {
+	    int id = 4*row+i;
+		if(history[id] == 0x3f) {
+
+		    char key = KEY_ARRAY[id];
+			printf("Button %2c was pushed.\n", key);
+
+			switch(key) {
+			case 'A' :
+			    toggle_A();
+			    break;
+			case 'D' :
+			    toggle_D();
+			    break;
+			case 'C' :
+			    clear();
+			    break;
+			case '+' :
+			    add_mod();
+			    SIGN = 1;
+			    PKG = 1;
+			    break;
+			case '-' :
+			    add_mod();
+			    SIGN = 0;
+			    PKG = 1;
+			    break;
+			case '=' :
+			    add_mod();
+			    PKG = 0;
+			    break;
+			default:
+                modifier(key - '0');
+			    break;
+			}
+			if(strcmp(key, 'C'))
+			    c_count = 0;
+			display_settings();
+			break;
+		}
+	}
 }
 
 // UART
@@ -276,6 +278,19 @@ void EXTI1_IRQHandler() {
     printf("Obstruction detected.\n");
 }
 
+void setup_spi1() {
+    // Enable SPI1 and GPIOA
+    RCC -> APB2ENR |= RCC_APB2ENR_SPI1EN;
+//    RCC -> AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+
+    GPIOA -> MODER &= ~(0xcff0);
+    GPIOA -> MODER |= 0x8a50;
+
+    SPI1 -> CR2 = 0x070c;
+    SPI1 -> CR1 = 0xc004;
+    SPI1 -> CR1 |= 1 << 6;
+}
+
 
 // MAIN
 int main(void) {
@@ -286,10 +301,12 @@ int main(void) {
 	setup_ports();
 	setup_exti1();
 	setup_uart5();
-	setup_spi1();
 	setup_tim7();
 
-	for(;;) {
-	    asm volatile ("wfi");
-	}
+	printf("Enter Key:\n");
+
+//	setup_spi1();
+//    LCD_Init();
+//    LCD_Clear(BLACK);
+//    LCD_DrawRectangle(10,20,100,200, GREEN);
 }
