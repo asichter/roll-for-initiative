@@ -23,9 +23,14 @@ for img in os.listdir("../Dice Testing Pictures/"):
     cv.namedWindow("grayscale" + img,cv.WINDOW_NORMAL) 
     cv.imshow("grayscale" + img,output_img) # grayscale image
     cv.waitKey(0)
-    edges = cv.Canny(output_img,0,200) # apply the Canny algorithm - this horribly disfigures the image - read below
+    edges = cv.Canny(output_img,0,100) # apply the Canny algorithm - this horribly disfigures the image - read below
     cv.namedWindow("canny"+img,cv.WINDOW_NORMAL)
     cv.imshow("canny" + img,edges)  # display Canny (cover your eyes)
+    cv.waitKey(0)
+    contours = cv.findContours(edges,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_NONE)
+    cv.drawContours(test_img,contours[0],-1,(0,0,255),thickness = 2)
+    cv.namedWindow("drawContours" + img,cv.WINDOW_NORMAL)
+    cv.imshow("drawContours" + img,test_img)
     cv.waitKey(0)
 
 # Canny disfigures the image because we don't know the minVal and maxVal for hysterisis
