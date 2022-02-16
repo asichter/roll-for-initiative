@@ -1,4 +1,4 @@
-#include "stm32f4xx.h"
+#include "stm32f0xx.h"
 
 #include <stdio.h>
 #include "tty.h"
@@ -56,12 +56,15 @@ void insert_echo_char(char ch) {
 
 
 int line_buffer_getchar(void) {
-    USART_TypeDef *u = UART5;
+    USART_TypeDef *u = USART5;
+    // If we missed reading some characters, clear the overrun flag.
+    if (u->ISR & USART_ISR_ORE)
+        u->ICR |= USART_ICR_ORECF;
     // Wait for a newline to complete the buffer.
     while(fifo_newline(&input_fifo) == 0) {
-        while (!(u->SR & USART_SR_RXNE))
+        while (!(u->ISR & USART_ISR_RXNE))
             ;
-        insert_echo_char(u->DR);
+        insert_echo_char(u->RDR);
     }
     // Return a character from the line buffer.
     char ch = fifo_remove(&input_fifo);
@@ -86,7 +89,7 @@ int tty_input_available(void)
         return fifo_newline(&input_fifo);
     if (!fifo_empty(&input_fifo))
         return 1;
-    if ((UART5->SR & USART_SR_RXNE) == 0)
+    if ((USART5->ISR & USART_ISR_RXNE) == 0)
         return 0;
     return 1;
 }

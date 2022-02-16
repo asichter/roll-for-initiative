@@ -3,7 +3,7 @@
 // lcd.c: Adapted from the lcdwiki.com examples.
 //============================================================================
 
-#include "stm32f4xx.h"
+#include "stm32f0xx.h"
 #include <stdint.h>
 #include "lcd.h"
 
@@ -18,11 +18,11 @@ lcd_dev_t lcddev;
 #define LCD_RESET 2
 
 #define LCD_CS_SET  do { while((SPI->SR & SPI_SR_BSY) != 0); GPIO_TYPE->BSRR=1<<LCD_CS; } while(0)
-#define LCD_RS_SET  GPIO_TYPE->BSRRL=1<<LCD_RS
+#define LCD_RS_SET  GPIO_TYPE->BSRR=1<<LCD_RS
 #define LCD_RESET_SET GPIO_TYPE->BSRR=1<<LCD_RESET
 
 #define LCD_CS_CLR  GPIO_TYPE->BRR=1<<LCD_CS
-#define LCD_RS_CLR  GPIO_TYPE->BSRRH=1<<LCD_RS
+#define LCD_RS_CLR  GPIO_TYPE->BRR=1<<LCD_RS
 #define LCD_RESET_CLR GPIO_TYPE->BRR=1<<LCD_RESET
 
 //============================================================================
@@ -37,9 +37,9 @@ void nano_wait(unsigned int n) {
 void LCD_Reset(void)
 {
     // Assert reset
-    GPIOA->BSRRH = 1<<LCD_RESET;
+    GPIOA->BRR = 1<<LCD_RESET;
     nano_wait(100000000);
-    GPIOA->BSRRL = 1<<LCD_RESET;
+    GPIOA->BSRR = 1<<LCD_RESET;
     nano_wait(50000000);
 }
 
@@ -119,7 +119,7 @@ void LCD_WR_DATA(uint8_t data)
 void LCD_WriteData16_Prepare()
 {
     LCD_RS_SET;
-    SPI->CR2 |= SPI_CR1_DFF;
+    SPI->CR2 |= SPI_CR2_DS;
 }
 
 // Write 16-bit data
@@ -133,7 +133,7 @@ void LCD_WriteData16(u16 data)
 // Finish writing 16-bit data
 void LCD_WriteData16_End()
 {
-    SPI->CR2 &= ~SPI_CR1_DFF; // bad value forces it back to 8-bit mode
+    SPI->CR2 &= ~SPI_CR2_DS; // bad value forces it back to 8-bit mode
 }
 #endif /* not SLOW_SPI */
 
