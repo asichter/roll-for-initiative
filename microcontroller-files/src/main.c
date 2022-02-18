@@ -14,12 +14,14 @@
 #include "tty.h"
 #include <stdio.h>
 #include "lcd.h"
-#include <string.h>
+#include <math.h>
 
 // GLOBAL VARIABLES
+// Keypad Debouncing
 uint8_t history[16];
 uint8_t offset;
 
+// Configurables
 const static char KEY_ARRAY[] = "123+456-789AC0=D";
 int mod = 0;
 int sub_mod = 0;
@@ -29,19 +31,32 @@ uint8_t D = 0;
 uint8_t PKG = 0;
 uint8_t SIGN = 1;
 
+// DAC
+#define N 1000
+#define RATE 20000
+short int wavetable[N];
+int volume = 2048;
+int stepa = 0;
+int stepb = 0;
+int stepc = 0;
+int stepd = 0;
+int offseta = 0;
+int offsetb = 0;
+int offsetc = 0;
+int offsetd = 0;
+
 // SETUP FUNCTIONS
 void setup_ports() {
     RCC -> AHBENR |= 0x1e0000;
 
-    GPIOA -> MODER &= ~(0xcffc);
-    GPIOA -> MODER |= 0x8a50;
+    GPIOA -> MODER &= ~(0x3fc);
+    GPIOA -> MODER |= 0x350;
     GPIOA -> PUPDR &= ~(0xc);
     GPIOA -> PUPDR |= 0x4;
-    GPIOA -> AFR[0] &= ~(0xf0ff0000);
 
-    GPIOB -> MODER &= ~(0xf00ff);
-    GPIOB -> MODER |= 0xa0055;
-    GPIOB -> AFR[1] &= ~(0xff);
+    GPIOB -> MODER &= ~(0xcf0f00ff);
+    GPIOB -> MODER |= 0x8a0a0055;
+    GPIOB -> AFR[1] &= ~(0xff0000ff);
     GPIOB -> AFR[1] |= 0x11;
 
     GPIOC -> MODER &= ~(0x300ffff);
@@ -79,12 +94,12 @@ void setup_exti() {
     NVIC -> ISER[0] |= 1 << 5;
 }
 
-void setup_spi1() {
-    RCC -> APB2ENR |= 1 << 12;
+void setup_spi2() {
+    RCC -> APB1ENR |= 1 << 14;
 
-    SPI1 -> CR2 = 0x070c;
-    SPI1 -> CR1 = 0xc004;
-    SPI1 -> CR1 |= 1 << 6;
+    SPI2 -> CR2 = 0x070c;
+    SPI2 -> CR1 = 0xc004;
+    SPI2 -> CR1 |= 1 << 6;
 }
 
 void setup_tim7() {
@@ -98,7 +113,7 @@ void setup_tim7() {
     NVIC -> ISER[0] |= 1 << 18;
 }
 
-void setup_i2c() {
+void setup_i2c1() {
     RCC -> APB1ENR |= 1 << 21;
 
     I2C1 -> CR1 &= ~(0x1);
@@ -111,6 +126,25 @@ void setup_i2c() {
     I2C1 -> OAR2 &= ~(1 << 15);
 
     I2C1 -> CR1 |= 1;
+}
+
+void setup_dac() {
+    RCC -> APB1ENR |= 1<<29;
+
+    DAC -> CR |= 1<<2;
+    DAC -> CR |= 0x38;
+    DAC -> CR |= 1;
+}
+
+void setup_tim6() {
+    RCC -> APB1ENR |= 1 << 4;
+
+    TIM6 -> PSC = 599;
+    TIM6 -> ARR = 3;
+    TIM6 -> DIER |= 1;
+    TIM6 -> CR1 |= 1;
+
+    NVIC -> ISER[0] = 1<<17;
 }
 
 
@@ -244,7 +278,7 @@ void handle_keypress(int cols) {
                 modifier(key - '0');
                 break;
             }
-            if(strcmp(key, 'C'))
+            if(key != 'C')
                 c_count = 0;
             display_settings();
             break;
@@ -396,6 +430,57 @@ int i2c_write_flash_complete() {
     return 1;
 }
 
+// DAC
+void write_dac(int sample) {
+    DAC -> DHR12R1 = sample;
+    DAC -> SWTRIGR = 1;
+}
+
+void init_wavetable() {
+    for(int index = 0; index < N; index++) {
+        wavetable[index] = 32767 * sin(2 * M_PI * index / N);
+    }
+}
+
+void set_freq_a(float f) {
+    if(f == 0) {
+        stepa = 0;
+        offseta = 0;
+    }
+    else {
+        stepa = f * N / RATE * (1<<16);
+    }
+}
+
+void set_freq_b(float f) {
+    if(f == 0) {
+        stepb = 0;
+        offsetb = 0;
+    }
+    else {
+        stepb = f * N / RATE * (1<<16);
+    }
+}
+
+void set_freq_c(float f) {
+    if(f == 0) {
+        stepc = 0;
+        offsetc = 0;
+    }
+    else {
+        stepc = f * N / RATE * (1<<16);
+    }
+}
+
+void set_freq_d(float f) {
+    if(f == 0) {
+        stepd = 0;
+        offsetd = 0;
+    }
+    else {
+        stepd = f * N / RATE * (1<<16);
+    }
+}
 
 // ISRs
 void USART3_4_5_6_7_8_IRQHandler() {
@@ -423,6 +508,44 @@ void TIM7_IRQHandler() {
     handle_keypress(cols);
 }
 
+void TIM6_DAC_IRQHandler() {
+    float sample;
+
+    TIM6 -> SR &= ~(1);
+    DAC -> SWTRIGR |= 1;
+
+    offseta += stepa;
+    offsetb += stepb;
+    offsetc += stepc;
+    offsetd += stepd;
+
+    if((offseta >> 16) >= N) {
+        offseta -= (N << 16);
+    }
+    if((offsetb >> 16) >= N) {
+        offsetb -= (N << 16);
+    }
+    if((offsetc >> 16) >= N) {
+        offsetc -= (N << 16);
+    }
+    if((offsetd >> 16) >= N) {
+        offsetd -= (N << 16);
+    }
+
+    sample = wavetable[offseta >> 16] + wavetable[offsetb >> 16] + wavetable[offsetc >> 16] + wavetable[offsetd >> 16];
+    sample /= 32;
+    sample += 2048;
+
+    if(sample > 4095) {
+        sample = 4095;
+    }
+    else if(sample < 0) {
+        sample = 0;
+    }
+
+    DAC -> DHR12R1 = sample;
+}
+
 int main(void)
 {
     // Don't touch this
@@ -434,8 +557,10 @@ int main(void)
     setup_ports();
     setup_usart5();
     setup_exti();
-    setup_spi1();
-    setup_i2c();
+    setup_spi2();
+    setup_i2c1();
+    setup_dac();
+    setup_tim6();
     setup_tim7();
 
     // Debugging EEPROM, can be safely removed
@@ -444,7 +569,7 @@ int main(void)
     i2c_write_flash(0x200, string, len);
     while(i2c_write_flash_complete() != 1);
 
-    // Devugging LCD, can be safely removed
+    // Debugging LCD, can be safely removed
     LCD_Init();
     LCD_Clear(BLACK);
     LCD_DrawString(0,   0, WHITE, BLACK, "Roll For Initiative!", 16, 0);
@@ -463,6 +588,10 @@ int main(void)
     LCD_DrawString(0, 260, WHITE, BLACK, "Roll For Initiative!", 16, 0);
     LCD_DrawString(0, 280, WHITE, BLACK, "Roll For Initiative!", 16, 0);
     LCD_DrawString(0, 300, WHITE, BLACK, "More graphics coming soon!", 16, 0);
+
+    // Debugging DAC
+    set_freq_a(261.626);
+    set_freq_b(523.25);
 
     for(;;) {
         asm volatile ("wfi");

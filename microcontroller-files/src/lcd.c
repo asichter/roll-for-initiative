@@ -11,7 +11,7 @@ lcd_dev_t lcddev;
 
 // What GPIO port and SPI channel are we using here?
 #define GPIO_TYPE  GPIOA
-#define SPI SPI1
+#define SPI SPI2
 
 #define LCD_CS    4 /* also known as NSS */
 #define LCD_RS    3
