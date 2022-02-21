@@ -560,6 +560,7 @@ int main(void)
     setup_spi2();
     setup_i2c1();
     setup_dac();
+    init_wavetable();
     setup_tim6();
     setup_tim7();
 
@@ -589,7 +590,7 @@ int main(void)
     LCD_DrawString(0, 280, WHITE, BLACK, "Roll For Initiative!", 16, 0);
     LCD_DrawString(0, 300, WHITE, BLACK, "More graphics coming soon!", 16, 0);
 
-    // Debugging DAC
+    // Debugging DAC, can be safely removed
     set_freq_a(261.626);
     set_freq_b(523.25);
 
