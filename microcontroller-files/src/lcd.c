@@ -280,7 +280,7 @@ void LCD_Init()
     nano_wait(120000000); // Wait 120 ms
     LCD_WR_REG(0x29);     // Display on
 
-    LCD_direction(USE_HORIZONTAL);
+    LCD_direction(1);
 }
 
 //===========================================================================

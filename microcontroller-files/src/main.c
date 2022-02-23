@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include "lcd.h"
 #include <math.h>
+#include "ui.h"
 
 // GLOBAL VARIABLES
 // Keypad Debouncing
@@ -546,6 +547,134 @@ void TIM6_DAC_IRQHandler() {
     DAC -> DHR12R1 = sample;
 }
 
+void LCD_DisplayUI() {
+    u16 x = 320;
+    u16 y = 240;
+    u16 main_display_w = 79;
+    u16 main_display_h = 97;
+    u16 mod_w = 35;
+    u16 mod_h = 43;
+    u16 prev_w = 27;
+    u16 prev_h = 33;
+    u16 mod_sign_w = 25;
+    u16 mod_sign_h = 25;
+    u16 dadv_w = 22;
+    u16 dadv_h = 27;
+
+//    u16 main_display1_x = x - 37;
+//    u16 main_display1_y = y - 120;
+//    u16 main_display2_x = x - 121;
+//    u16 main_display2_y = y - 120;
+//    u16 main_display3_x = x - 205;
+//    u16 main_display3_y = y - 120;
+//
+//    u16 mod1_x = x - 105;
+//    u16 mod1_y = y - 55;
+//    u16 mod2_x = x - 143;
+//    u16 mod2_y = y - 55;
+//    u16 mod3_x = x - 181;
+//    u16 mod3_y = y - 55;
+//
+//    u16 mod_sign_x = x - 77;
+//    u16 mod_sign_y = y - 65;
+//
+//    u16 prev1_x = x - 14;
+//    u16 prev1_y = y - 14;
+//    u16 prev2_x = x - 43;
+//    u16 prev2_y = y - 14;
+//    u16 prev3_x = x - 72;
+//    u16 prev3_y = y - 14;
+//
+//    u16 dadv_x = x - 34;
+//    u16 dadv_y = y - 63;
+
+    u16 main_display1_x = 37;
+    u16 main_display1_y = 120;
+    u16 main_display2_x = 121;
+    u16 main_display2_y = 120;
+    u16 main_display3_x = 205;
+    u16 main_display3_y = 120;
+
+    u16 mod1_x = 105;
+    u16 mod1_y = 55;
+    u16 mod2_x = 143;
+    u16 mod2_y = 55;
+    u16 mod3_x = 181;
+    u16 mod3_y = 55;
+
+    u16 mod_sign_x = 77;
+    u16 mod_sign_y = 65;
+
+    u16 prev1_x = 14;
+    u16 prev1_y = 14;
+    u16 prev2_x = 43;
+    u16 prev2_y = 14;
+    u16 prev3_x = 72;
+    u16 prev3_y = 14;
+
+    u16 dadv_x = 34;
+    u16 dadv_y = 63;
+
+
+//    LCD_DrawRectangle(main_display1_x - main_display_w, main_display1_y, main_display1_x,
+//                main_display1_y - main_display_h, RED);
+//    LCD_DrawRectangle(main_display2_x - main_display_w, main_display2_y, main_display2_x,
+//                main_display2_y - main_display_h, RED);
+//    LCD_DrawRectangle(main_display3_x - main_display_w,  main_display3_y, main_display3_x,
+//                main_display3_y - main_display_h, RED);
+//
+//    LCD_DrawRectangle(mod_sign_x - mod_sign_w, mod_sign_y, mod_sign_x,
+//                mod_sign_y - mod_sign_h, LIGHTBLUE);
+//
+//    LCD_DrawRectangle(mod1_x - mod_w, mod1_y, mod1_x,
+//                mod1_y - mod_h, BLUE);
+//    LCD_DrawRectangle(mod2_x - mod_w, mod2_y, mod2_x,
+//                mod2_y - mod_h, BLUE);
+//    LCD_DrawRectangle(mod3_x - mod_w, mod3_y, mod3_x,
+//                mod3_y - mod_h, BLUE);
+//
+//    LCD_DrawRectangle(prev1_x - prev_w, prev1_y, prev1_x,
+//                prev1_y - prev_h, MAGENTA);
+//    LCD_DrawRectangle(prev2_x - prev_w, prev2_y, prev2_x,
+//                prev2_y - prev_h, MAGENTA);
+//    LCD_DrawRectangle(prev3_x - prev_w, prev3_y, prev3_x,
+//                prev3_y - prev_h, MAGENTA);
+//
+//    LCD_DrawRectangle(dadv_x - dadv_w, dadv_y, dadv_x,
+//                dadv_y - dadv_h, LIGHTBLUE);
+
+    LCD_DrawRectangle(main_display1_x + main_display_w, main_display1_y, main_display1_x,
+                main_display1_y + main_display_h, RED);
+    LCD_DrawRectangle(main_display2_x + main_display_w, main_display2_y, main_display2_x,
+                main_display2_y + main_display_h, RED);
+    LCD_DrawRectangle(main_display3_x + main_display_w,  main_display3_y, main_display3_x,
+                main_display3_y + main_display_h, RED);
+
+    LCD_DrawRectangle(mod_sign_x + mod_sign_w, mod_sign_y, mod_sign_x,
+                mod_sign_y + mod_sign_h, LIGHTBLUE);
+
+    LCD_DrawRectangle(mod1_x + mod_w, mod1_y, mod1_x,
+                mod1_y + mod_h, BLUE);
+    LCD_DrawRectangle(mod2_x + mod_w, mod2_y, mod2_x,
+                mod2_y + mod_h, BLUE);
+    LCD_DrawRectangle(mod3_x + mod_w, mod3_y, mod3_x,
+                mod3_y + mod_h, BLUE);
+
+    LCD_DrawRectangle(prev1_x + prev_w, prev1_y, prev1_x,
+                prev1_y + prev_h, MAGENTA);
+    LCD_DrawRectangle(prev2_x + prev_w, prev2_y, prev2_x,
+                prev2_y + prev_h, MAGENTA);
+    LCD_DrawRectangle(prev3_x + prev_w, prev3_y, prev3_x,
+                prev3_y + prev_h, MAGENTA);
+
+    LCD_DrawRectangle(dadv_x + dadv_w, dadv_y, dadv_x,
+                dadv_y + dadv_h, LIGHTBLUE);
+
+
+    LCD_DrawPicture(main_display1_x + main_display_w, main_display1_y, &lrgnum1);
+
+}
+
 int main(void)
 {
     // Don't touch this
@@ -565,34 +694,36 @@ int main(void)
     setup_tim7();
 
     // Debugging EEPROM, can be safely removed
-    const char string[] = "This is a test.";
-    int len = strlen(string) + 1;
-    i2c_write_flash(0x200, string, len);
-    while(i2c_write_flash_complete() != 1);
+//    const char string[] = "This is a test.";
+//    int len = strlen(string) + 1;
+//    i2c_write_flash(0x200, string, len);
+//    while(i2c_write_flash_complete() != 1);
 
     // Debugging LCD, can be safely removed
     LCD_Init();
-    LCD_Clear(BLACK);
-    LCD_DrawString(0,   0, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0,  20, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0,  40, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0,  60, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0,  80, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0, 100, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0, 120, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0, 140, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0, 160, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0, 180, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0, 200, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0, 220, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0, 240, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0, 260, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0, 280, WHITE, BLACK, "Roll For Initiative!", 16, 0);
-    LCD_DrawString(0, 300, WHITE, BLACK, "More graphics coming soon!", 16, 0);
+    LCD_Clear(WHITE);
+    LCD_DisplayUI();
+//    LCD_Clear(BLACK);
+//    LCD_DrawString(0,   0, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0,  20, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0,  40, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0,  60, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0,  80, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0, 100, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0, 120, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0, 140, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0, 160, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0, 180, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0, 200, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0, 220, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0, 240, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0, 260, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0, 280, WHITE, BLACK, "Roll For Initiative!", 16, 0);
+//    LCD_DrawString(0, 300, WHITE, BLACK, "More graphics coming soon!", 16, 0);
 
     // Debugging DAC, can be safely removed
     set_freq_a(261.626);
-    set_freq_b(523.25);
+    set_freq_b(329.63);
 
     for(;;) {
         asm volatile ("wfi");
