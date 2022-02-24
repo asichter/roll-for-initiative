@@ -50,10 +50,12 @@ int offsetd = 0;
 void setup_ports() {
     RCC -> AHBENR |= 0x1e0000;
 
-    GPIOA -> MODER &= ~(0x3fc);
-    GPIOA -> MODER |= 0x350;
+    GPIOA -> MODER &= ~(0xc03c03fc);
+    GPIOA -> MODER |= 0x40280350;
     GPIOA -> PUPDR &= ~(0xc);
     GPIOA -> PUPDR |= 0x4;
+    GPIOA -> AFR[1] &= ~(0xff0);
+    GPIOA -> AFR[1] |= 0x110;
 
     GPIOB -> MODER &= ~(0xcf0f00ff);
     GPIOB -> MODER |= 0x8a0a0055;
@@ -432,6 +434,18 @@ int i2c_write_flash_complete() {
 }
 
 // DAC
+void enable_speaker() {
+	GPIOA -> BRR = 1 << 15;
+	DAC -> CR |= 1;
+	TIM6 -> CR1 |= 1;
+}
+
+void disable_speaker() {
+	GPIOA -> BSRR = 1 << 15;
+	DAC -> CR &= ~(0x1);
+	TIM6 -> CR1 &= ~(0x1);
+}
+
 void write_dac(int sample) {
     DAC -> DHR12R1 = sample;
     DAC -> SWTRIGR = 1;
@@ -691,6 +705,7 @@ int main(void)
     setup_dac();
     init_wavetable();
     setup_tim6();
+    disable_speaker();
     setup_tim7();
 
     // Debugging EEPROM, can be safely removed
