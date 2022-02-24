@@ -73,6 +73,8 @@ void setup_ports() {
     GPIOD -> MODER |= 0x20;
     GPIOD -> AFR[0] &= ~(0xf00);
     GPIOD -> AFR[0] |= 0x200;
+	
+	
 }
 
 void setup_usart5() {
@@ -86,6 +88,19 @@ void setup_usart5() {
 
     while(((USART5 -> CR1 >> 2) & 3) != 3);
     NVIC -> ISER[0] |= 1 << 29;
+}
+
+void setup_usart1(){
+   RCC -> APB2ENR |= 1 << 14;
+
+   USART1 -> CR2 &= ~(00003000);
+   USART1 -> BRR = 0x1a1;
+   USART1 -> CR1 &= ~(0x10009401);
+   USART1 -> CR1 |= 0x2c;
+   USART1 -> CR1 |= 0x1;
+
+   while(((USART1 -> CR1 >> 2) & 3) != 3);
+   NVIC -> ISER[0] |= 1 << 27;
 }
 
 void setup_exti() {
@@ -699,6 +714,7 @@ int main(void)
     //Or this
     setup_ports();
     setup_usart5();
+    setup_usart1();
     setup_exti();
     setup_spi2();
     setup_i2c1();
@@ -739,7 +755,11 @@ int main(void)
     // Debugging DAC, can be safely removed
     set_freq_a(261.626);
     set_freq_b(329.63);
-
+	
+    while(1) {
+    	while (!(USART1 -> ISR & USART_ISR_TXE)); // for debugging USART1
+    	USART1 -> TDR = 0x69;
+    }
     for(;;) {
         asm volatile ("wfi");
     }
