@@ -5,7 +5,6 @@
 #ifndef __LCD_H
 #define __LCD_H
 #include "stdlib.h"
-#include "stdio.h"
 
 // shorthand notation for 8-bit and 16-bit unsigned integers
 typedef uint8_t u8;
@@ -36,7 +35,7 @@ extern lcd_dev_t lcddev;
 // 1: rotate: 90
 // 2: rotate: 180
 // 3: rotate 270
-#define USE_HORIZONTAL       0
+#define USE_HORIZONTAL       1
 
 // The dimensions of the display.
 #define LCD_W 240
@@ -79,6 +78,12 @@ void LCD_DrawTriangle(u16 x0,u16 y0, u16 x1,u16 y1, u16 x2,u16 y2, u16 c);
 void LCD_DrawFillTriangle(u16 x0,u16 y0, u16 x1,u16 y1, u16 x2,u16 y2, u16 c);
 void LCD_DrawChar(u16 x,u16 y,u16 fc, u16 bc, char num, u8 size, u8 mode);
 void LCD_DrawString(u16 x,u16 y, u16 fc, u16 bg, const char *p, u8 size, u8 mode);
+
+// Fonts
+const unsigned char asc2_1206[95][12];
+const unsigned char asc2_1608[95][16];
+const unsigned short lrgfnt1[10][11];
+const unsigned char smlfnt1[14][7];
 
 //===========================================================================
 // C Picture data structure.
