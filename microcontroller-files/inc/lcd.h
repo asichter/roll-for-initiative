@@ -5,6 +5,7 @@
 #ifndef __LCD_H
 #define __LCD_H
 #include "stdlib.h"
+#include "stdint.h"
 
 // shorthand notation for 8-bit and 16-bit unsigned integers
 typedef uint8_t u8;
@@ -82,8 +83,8 @@ void LCD_DrawString(u16 x,u16 y, u16 fc, u16 bg, const char *p, u8 size, u8 mode
 // Fonts
 const unsigned char asc2_1206[95][12];
 const unsigned char asc2_1608[95][16];
-const unsigned short lrgfnt1[10][11];
-const unsigned char smlfnt1[14][7];
+const unsigned short lrgfnt1[11][11];
+const unsigned char smlfnt1[15][7];
 
 //===========================================================================
 // C Picture data structure.
