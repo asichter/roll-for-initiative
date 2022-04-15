@@ -11,7 +11,46 @@
 
 #define TempPicturePtr(name,width,height) Picture name[(width)*(height)/6+2] = { {width,height,2} }
 
-Picture lrgnum1;
+extern const Picture lrgnum1;
+extern const Picture lrgnum2;
+extern const Picture lrgnum3;
+extern const Picture lrgnum4;
+extern const Picture lrgnum5;
+extern const Picture lrgnum6;
+extern const Picture lrgnum7;
+extern const Picture lrgnum8;
+extern const Picture lrgnum9;
+extern const Picture lrgnum0;
+
+void pic_subset(Picture *dst, const Picture *src, int sx, int sy) {
+    int dw = dst->width;
+    int dh = dst->height;
+    if (dw + sx > src->width)
+        for(;;)
+            ;
+    if (dh + sy > src->height)
+        for(;;)
+            ;
+    for(int y=0; y<dh; y++)
+        for(int x=0; x<dw; x++)
+            dst->pix2[dw * y + x] = src->pix2[src->width * (y+sy) + x + sx];
+}
+
+void pic_overlay(Picture *dst, int xoffset, int yoffset, const Picture *src, int transparent) {
+    for(int y=0; y<src->height; y++) {
+        int dy = y+yoffset;
+        if (dy < 0 || dy >= dst->height)
+            continue;
+        for(int x=0; x<src->width; x++) {
+            int dx = x+xoffset;
+            if (dx < 0 || dx >= dst->width)
+                continue;
+            unsigned short int p = src->pix2[y*src->width + x];
+            if (p != transparent)
+                dst->pix2[dy*dst->width + dx] = p;
+        }
+    }
+}
 
 void printmod(int mod, u16 mode, u8 sign) {
     char str[3] = "   ";
@@ -334,12 +373,12 @@ void LCD_DrawCharScale(u16 x,u16 y,u16 fc, u16 bc, char num, u8 size, u16 scale)
     }
 }
 
-void LCD_DrawScale2(Picture *pic, uint8_t scale) {
-    /*TempPicturePtr(temp, 18, 22);
+void LCD_DrawScale2(const Picture *pic, uint8_t scale) {
+    TempPicturePtr(temp, 18, 22);
     for(int i = 0; i < pic->height * scale; i++) {
         for(int j = 0; j < pic->width * scale; j++) {
-            temp->pixel_data[i*j] = pic->pixel_data[(i/scale)*(j/scale)];
+            temp->pix2[i*j] = pic->pix2[(i)*(j)];
         }
     }
-    LCD_DrawPicture(5, 5, temp);*/
+    LCD_DrawPicture(5, 5, temp);
 }

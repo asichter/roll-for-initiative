@@ -41,6 +41,17 @@ uint8_t PKG = 0;
 uint8_t SIGN = 0;
 uint8_t DBG = 0;
 
+extern const Picture lrgnum1;
+extern const Picture lrgnum2;
+extern const Picture lrgnum3;
+extern const Picture lrgnum4;
+extern const Picture lrgnum5;
+extern const Picture lrgnum6;
+extern const Picture lrgnum7;
+extern const Picture lrgnum8;
+extern const Picture lrgnum9;
+extern const Picture lrgnum0;
+
 // DAC
 #define N 1000
 #define RATE 20000
@@ -685,6 +696,7 @@ int main(void)
     printchr(0,0,BLUE, "666", 2, 0);
     printchr(0,0,LGRAYBLUE, "A", 3, 0);
     printmnsign(SIGN);
+    LCD_DrawScale2(&lrgnum9, 2);
     disable_usart5();
 
     for(;;) {

@@ -8,7 +8,12 @@
 #include "ui.h"
 
 
-Picture lrgnum1 = {
+const struct {
+  unsigned int   width;
+  unsigned int   height;
+  unsigned int   bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+  unsigned char  pixel_data[9 * 11 * 2 + 1];
+} lrgnum1 = {
   9, 11, 2,
   "\377\377\377\377\377\377\377\377\377\377\377\377\377\377\000\000\377\377\377"
   "\377\377\377\377\377\377\377\377\377\377\377\000\000\000\000\377\377\377\377\377"
@@ -22,7 +27,12 @@ Picture lrgnum1 = {
   "\377\377\377\377\377\377\377\377\000\000\000\000\000\000\000\000",
 };
 
-Picture lrgnum2 = {
+const struct {
+  unsigned int   width;
+  unsigned int   height;
+  unsigned int   bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+  unsigned char  pixel_data[9 * 11 * 2 + 1];
+} lrgnum2 = {
   9, 11, 2,
   "\377\377\377\377\377\377\377\377\000\000\000\000\000\000\000\000\377\377\377\377\377\377"
   "\377\377\000\000\000\000\377\377\000\000\000\000\000\000\377\377\377\377\377\377\000\000\377\377"
@@ -36,7 +46,12 @@ Picture lrgnum2 = {
   "\000\000\000\000\000\000\377\377",
 };
 
-Picture lrgnum3 = {
+const struct {
+  unsigned int   width;
+  unsigned int   height;
+  unsigned int   bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+  unsigned char  pixel_data[9 * 11 * 2 + 1];
+} lrgnum3 = {
   9, 11, 2,
   "\377\377\377\377\377\377\377\377\000\000\000\000\000\000\377\377\377\377\377\377\377"
   "\377\377\377\000\000\000\000\000\000\000\000\000\000\377\377\377\377\377\377\000\000\377\377\377"
@@ -51,7 +66,12 @@ Picture lrgnum3 = {
 };
 
 
-Picture lrgnum4 = {
+const struct {
+  unsigned int   width;
+  unsigned int   height;
+  unsigned int   bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+  unsigned char  pixel_data[9 * 11 * 2 + 1];
+} lrgnum4 = {
   9, 11, 2,
   "\377\377\377\377\377\377\377\377\377\377\000\000\000\000\377\377\377\377\377\377"
   "\377\377\377\377\377\377\000\000\000\000\000\000\377\377\377\377\377\377\377\377\377"
@@ -64,7 +84,12 @@ Picture lrgnum4 = {
   "\377\377\377\377\377\377\377\000\000\000\000\377\377\377\377",
 };
 
-Picture lrgnum5 = {
+const struct {
+  unsigned int   width;
+  unsigned int   height;
+  unsigned int   bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+  unsigned char  pixel_data[9 * 11 * 2 + 1];
+} lrgnum5 = {
   9, 11, 2,
   "\377\377\377\377\000\000\000\000\000\000\000\000\000\000\000\000\000\000\377\377\377\377\000\000\000\000\377"
   "\377\377\377\377\377\377\377\377\377\377\377\377\377\000\000\000\000\377\377\377"
@@ -77,7 +102,12 @@ Picture lrgnum5 = {
   "\377\377\377\000\000\000\000\000\000\000\000\377\377\377\377",
 };
 
-Picture lrgnum6 = {
+const struct {
+  unsigned int   width;
+  unsigned int   height;
+  unsigned int   bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+  unsigned char  pixel_data[9 * 11 * 2 + 1];
+} lrgnum6 = {
   9, 11, 2,
   "\377\377\377\377\377\377\377\377\000\000\000\000\000\000\000\000\377\377\377\377\377\377"
   "\377\377\000\000\377\377\377\377\000\000\000\000\000\000\377\377\377\377\000\000\377\377\377"
@@ -90,7 +120,12 @@ Picture lrgnum6 = {
   "\000\000\000\000\000\000\000\000\377\377\377\377",
 };
 
-Picture lrgnum7 = {
+const struct {
+  unsigned int   width;
+  unsigned int   height;
+  unsigned int   bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+  unsigned char  pixel_data[9 * 11 * 2 + 1];
+} lrgnum7 = {
   9, 11, 2,
   "\377\377\377\377\377\377\000\000\000\000\000\000\000\000\000\000\000\000\377\377\377\377\000\000\000\000"
   "\000\000\000\000\000\000\000\000\000\000\377\377\000\000\377\377\377\377\377\377\377\377\377\377"
@@ -104,7 +139,12 @@ Picture lrgnum7 = {
   "\377\377\377\377\377\377",
 };
 
-Picture lrgnum8 = {
+const struct {
+  unsigned int   width;
+  unsigned int   height;
+  unsigned int   bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+  unsigned char  pixel_data[9 * 11 * 2 + 1];
+} lrgnum8 = {
   9, 11, 2,
   "\377\377\377\377\377\377\000\000\000\000\000\000\000\000\000\000\377\377\377\377\377\377\000\000"
   "\377\377\377\377\377\377\000\000\000\000\000\000\377\377\000\000\000\000\377\377\377\377\377"
@@ -117,7 +157,12 @@ Picture lrgnum8 = {
   "\000\000\000\000\377\377\377\377",
 };
 
-Picture lrgnum9 = {
+const struct {
+  unsigned int   width;
+  unsigned int   height;
+  unsigned int   bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+  unsigned char  pixel_data[9 * 11 * 2 + 1];
+} lrgnum9 = {
   9, 11, 2,
   "\377\377\377\377\377\377\000\000\000\000\000\000\000\000\377\377\377\377\377\377\377\377"
   "\000\000\377\377\377\377\000\000\000\000\000\000\377\377\377\377\000\000\000\000\377\377\377\377"
@@ -130,7 +175,12 @@ Picture lrgnum9 = {
   "\000\000\000\000\377\377\377\377\377\377",
 };
 
-Picture lrgnum0 = {
+const struct {
+  unsigned int   width;
+  unsigned int   height;
+  unsigned int   bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+  unsigned char  pixel_data[9 * 11 * 2 + 1];
+} lrgnum0 = {
   9, 11, 2,
   "\377\377\377\377\377\377\377\377\000\000\000\000\000\000\377\377\377\377\377\377\377"
   "\377\377\377\000\000\377\377\000\000\000\000\000\000\377\377\377\377\377\377\000\000\000\000\377"
