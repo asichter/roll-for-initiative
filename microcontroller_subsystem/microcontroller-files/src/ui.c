@@ -9,6 +9,8 @@
 #include "ui.h"
 #include "string.h"
 
+#define TempPicturePtr(name,width,height) Picture name[(width)*(height)/6+2] = { {width,height,2} }
+
 Picture lrgnum1;
 
 void printmod(int mod, u16 mode, u8 sign) {
@@ -48,21 +50,17 @@ void printdadv(const u8 p){
 }
 
 void printmnsign(const u8 p){
-    if (p==1)
+    if (p==0)
         printchr(0,0,BLACK,"+",5,0);
-    else if (p==2)
-        printchr(0,0,BLACK,"-",5,0);
     else
-        printchr(0,0,BLACK," ",5,0);
+        printchr(0,0,BLACK,"-",5,0);
 }
 
 void printmodsign(const u8 p){
-    if (p==1)
+    if (p==0)
         printchr(0,0,BLACK,"+",4,0);
-    else if (p==2)
-        printchr(0,0,BLACK,"-",4,0);
     else
-        printchr(0,0,BLACK," ",4,0);
+        printchr(0,0,BLACK,"-",4,0);
 }
 
 void clrmain(){
@@ -334,4 +332,14 @@ void LCD_DrawCharScale(u16 x,u16 y,u16 fc, u16 bc, char num, u8 size, u16 scale)
             }
         }
     }
+}
+
+void LCD_DrawScale2(Picture *pic, uint8_t scale) {
+    /*TempPicturePtr(temp, 18, 22);
+    for(int i = 0; i < pic->height * scale; i++) {
+        for(int j = 0; j < pic->width * scale; j++) {
+            temp->pixel_data[i*j] = pic->pixel_data[(i/scale)*(j/scale)];
+        }
+    }
+    LCD_DrawPicture(5, 5, temp);*/
 }

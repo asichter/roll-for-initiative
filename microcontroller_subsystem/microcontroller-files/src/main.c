@@ -13,6 +13,7 @@
 #include "fifo.h"
 #include "tty.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include "lcd.h"
 #include <math.h>
 #include "ui.h"
@@ -22,15 +23,23 @@
 uint8_t history[16];
 uint8_t offset;
 
+// Roll Values
+uint8_t roll_table[64];
+uint8_t roll_table_ind = 0;
+uint8_t advantage = 0;
+uint8_t disadvantage = 255;
+int roll_sum = 0;
+
 // Configurables
 //const static char KEY_ARRAY[] = "123+456-789AC0=D";
-const static char KEY_ARRAY[] = "123A456_789MC0+R";
+const static char KEY_ARRAY[] = "123A456=789MC0+R";
 int mod = 0;
 int sub_mod = 0;
-uint8_t c_count=0;
-uint8_t DADV=0;
+uint8_t c_count = 0;
+uint8_t DADV = 0;
 uint8_t PKG = 0;
 uint8_t SIGN = 0;
+uint8_t DBG = 0;
 
 // DAC
 #define N 1000
@@ -45,6 +54,8 @@ int offseta = 0;
 int offsetb = 0;
 int offsetc = 0;
 int offsetd = 0;
+
+
 
 // SETUP FUNCTIONS
 void setup_ports() {
@@ -73,8 +84,6 @@ void setup_ports() {
     GPIOD -> MODER |= 0x20;
     GPIOD -> AFR[0] &= ~(0xf00);
     GPIOD -> AFR[0] |= 0x200;
-
-
 }
 
 void setup_usart5() {
@@ -87,7 +96,12 @@ void setup_usart5() {
     USART5 -> CR1 |= 0x1;
 
     while(((USART5 -> CR1 >> 2) & 3) != 3);
-    NVIC -> ISER[0] |= 1 << 29;
+    NVIC -> ISER[0] = 1 << 29;
+}
+
+void disable_usart5() {
+    RCC -> APB1ENR &= ~(1 << 20);
+    NVIC -> ICER[0] = 1 << 29;
 }
 
 void setup_usart1(){
@@ -100,7 +114,7 @@ void setup_usart1(){
    USART1 -> CR1 |= 0x1;
 
    while(((USART1 -> CR1 >> 2) & 3) != 3);
-   NVIC -> ISER[0] |= 1 << 27;
+   NVIC -> ISER[0] = 1 << 27;
 }
 
 void setup_exti() {
@@ -109,7 +123,7 @@ void setup_exti() {
     EXTI -> FTSR |= 1 << 1;
     EXTI -> IMR |= 1 << 1;
 
-    NVIC -> ISER[0] |= 1 << 5;
+    NVIC -> ISER[0] = 1 << 5;
 }
 
 void setup_spi2() {
@@ -128,7 +142,7 @@ void setup_tim7() {
     TIM7 -> DIER |= 1;
     TIM7 -> CR1 |= 1;
 
-    NVIC -> ISER[0] |= 1 << 18;
+    NVIC -> ISER[0] = 1 << 18;
 }
 
 void setup_i2c1() {
@@ -147,7 +161,7 @@ void setup_i2c1() {
 }
 
 void setup_dac() {
-    RCC -> APB1ENR |= 1<<29;
+    RCC -> APB1ENR |= 1 << 29;
 
     DAC -> CR |= 1<<2;
     DAC -> CR |= 0x38;
@@ -162,7 +176,7 @@ void setup_tim6() {
     TIM6 -> DIER |= 1;
     TIM6 -> CR1 |= 1;
 
-    NVIC -> ISER[0] = 1<<17;
+    NVIC -> ISER[0] = 1 << 17;
 }
 
 
@@ -217,16 +231,14 @@ void update_hist(int cols) {
 //      2 = dadv
 //===========================================================================
 void toggle_adv() {
-    DADV+=1;
+    DADV += 1;
     if (DADV > 2)
         DADV=0;
     printdadv(DADV);
 }
 
 void toggle_sign() {
-    SIGN+=1;
-    if (SIGN > 2)
-        SIGN=0;
+    SIGN ^= 1;
     printmnsign(SIGN);
 }
 
@@ -277,54 +289,63 @@ void add_mod() {
 }
 
 void display_settings() {
+    if (DBG == 0) {
+        return;
+    }
     printf("Advantage: %2d\n", DADV);
     printf("Mod: %2d\n", mod);
     printf("Submod: %2d\n\n", sub_mod);
 }
 
-// KEY_ARRAY[] = "123A456_789MC0+R"
+void handle_debug() {
+    if (history[0] == 0xff && history[7] == 0xff && history[13] == 0x3f) {
+        DBG = 1;
+        setup_usart5();
+        printf("Debug Mode enabled.\n");
+    }
+    else if (history[0] == 0xff && history[7] == 0xff && history[12] == 0x3f) {
+        DBG = 0;
+        disable_usart5();
+    }
+}
+
 void handle_keypress(int cols) {
     int row = offset & 3;
     for(int i = 0; i < 4; i++) {
         int id = 4*row+i;
         if(history[id] == 0x3f) {
-
             char key = KEY_ARRAY[id];
             printf("Button %2c was pushed.\n", key);
 
             switch(key) {
-            case 'A' :
-                toggle_adv();
-                break;
-            case 'C' :
-                clear();
-                break;
-            case '+' :
-                if (PKG==1) {
-                    add_mod();
-                    SIGN = 0;
-                    PKG = 0;
-                } else {
-                    toggle_sign();
-                }
-                break;
-            case '_' :
-                // menu() and activate function buttons
-                break;
-            case 'M' :
-                // mute speaker
-                break;
-            case 'R' :
-                // re-roll
-                break;
-            default:
-                PKG = 1;
-                modifier(key - '0');
-                break;
+            case 'A' : toggle_adv();
+                       break;
+            case 'C' : clear();
+                       break;
+            case '+' : if (PKG==1) {
+                           add_mod();
+                           SIGN = 0;
+                           PKG = 0;
+                       } else {
+                           toggle_sign();
+                       }
+                       break;
+            case '=' : mod = SIGN == 0 ? mod + sub_mod : mod - sub_mod;
+                       sub_mod = 0;
+                       break;
+            case 'M' : // Mute speaker
+                       break;
+            case 'R' : // Reroll
+                       break;
+            default:   PKG = 1;
+                       modifier(key - '0');
+                       break;
             }
-            if(strcmp(key, 'C'))
+
+            if (key != 'C')
                 c_count = 0;
-            display_settings();
+            if (DBG != 0)
+                display_settings();
             break;
         }
     }
@@ -539,6 +560,32 @@ void set_freq_d(float f) {
 }
 
 // ISRs
+void USART1_IRQHandler() {
+    if(USART1 -> ISR & USART_ISR_RXNE)
+        USART1 -> ICR |= USART_ISR_RXNE;
+    printchr(0,0,BLUE, "420", 2, 0);
+    uint8_t roll = USART1 -> RDR;
+    roll_table[roll_table_ind++] = roll;
+    if(roll != 255){
+        if(roll > advantage)
+            advantage = roll;
+        if(roll < disadvantage)
+            disadvantage = roll;
+        roll_sum += roll;
+    } else {
+        roll_table_ind = 0;
+        if (DBG != 0) {
+            for(int i = 0; roll_table[i] != 255; i++) {
+                printf("%d\n", roll_table[i]);
+            }
+        }
+        advantage = 0;
+        disadvantage = 255;
+        roll_sum = 0;
+    }
+}
+
+
 void USART3_4_5_6_7_8_IRQHandler() {
     if(USART5 -> ISR & 0x8) {
         USART5 -> ICR |= 0x8;
@@ -550,17 +597,13 @@ void USART3_4_5_6_7_8_IRQHandler() {
     insert_echo_char(character);
 }
 
+// Infrared sensor detection
 void EXTI0_1_IRQHandler() {
-    // Infrared sensor detection
-    // Trigger Pi to take a picture through USART1
     EXTI -> PR = 1 << 1;
-    printf("Obstruction detected.\n");
-
-    while (!(USART1 -> ISR & USART_ISR_TXE)); // for debugging USART1
-          USART1 -> TDR = 0x69;
-
-//    while (!(USART1 -> ISR & USART_ISR_RXNE)); // for debugging USART1
-//          printf("%s\n", USART1 -> ) // USART1 -> TDR = 0x69;
+    USART1 -> TDR = 255;
+    if (DBG != 0) {
+        printf("Obstruction detected.\n");
+    }
 }
 
 void TIM7_IRQHandler() {
@@ -570,6 +613,7 @@ void TIM7_IRQHandler() {
     offset = (offset + 1) & 0x7;
     set_row();
     handle_keypress(cols);
+    handle_debug();
 }
 
 void TIM6_DAC_IRQHandler() {
@@ -620,21 +664,18 @@ int main(void)
     //Or this
     setup_ports();
     setup_usart5();
-    setup_usart1();
-    setup_exti();
+    //setup_usart1();
+    //setup_exti();
     setup_spi2();
-    setup_i2c1();
-    setup_dac();
-    init_wavetable();
-    setup_tim6();
-    disable_speaker();
+    //setup_i2c1();
+    //setup_dac();
+    //init_wavetable();
+    //setup_tim6();
+    //disable_speaker();
     setup_tim7();
 
-    // Debugging EEPROM, can be safely removed
-//    const char string[] = "This is a test.";
-//    int len = strlen(string) + 1;
-//    i2c_write_flash(0x200, string, len);
-//    while(i2c_write_flash_complete() != 1);
+    printf("Roll For Initiative.\n");
+    printf("Press 1 -> B -> 0 to enter Debug Mode.\n\n");
 
     // Debugging LCD, can be safely removed
     LCD_Init();
@@ -643,17 +684,9 @@ int main(void)
     printchr(0,0,RED, "69", 1, 0);
     printchr(0,0,BLUE, "666", 2, 0);
     printchr(0,0,LGRAYBLUE, "A", 3, 0);
+    printmnsign(SIGN);
+    disable_usart5();
 
-
-
-    // Debugging DAC, can be safely removed
-    set_freq_a(261.626);
-    set_freq_b(329.63);
-
-//    while(1) {
-//    	while (!(USART1 -> ISR & USART_ISR_TXE)); // for debugging USART1
-//    	USART1 -> TDR = 0x69;
-//    }
     for(;;) {
         asm volatile ("wfi");
     }
