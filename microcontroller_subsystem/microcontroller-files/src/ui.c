@@ -22,35 +22,10 @@ extern const Picture lrgnum8;
 extern const Picture lrgnum9;
 extern const Picture lrgnum0;
 
-void pic_subset(Picture *dst, const Picture *src, int sx, int sy) {
-    int dw = dst->width;
-    int dh = dst->height;
-    if (dw + sx > src->width)
-        for(;;)
-            ;
-    if (dh + sy > src->height)
-        for(;;)
-            ;
-    for(int y=0; y<dh; y++)
-        for(int x=0; x<dw; x++)
-            dst->pix2[dw * y + x] = src->pix2[src->width * (y+sy) + x + sx];
-}
-
-void pic_overlay(Picture *dst, int xoffset, int yoffset, const Picture *src, int transparent) {
-    for(int y=0; y<src->height; y++) {
-        int dy = y+yoffset;
-        if (dy < 0 || dy >= dst->height)
-            continue;
-        for(int x=0; x<src->width; x++) {
-            int dx = x+xoffset;
-            if (dx < 0 || dx >= dst->width)
-                continue;
-            unsigned short int p = src->pix2[y*src->width + x];
-            if (p != transparent)
-                dst->pix2[dy*dst->width + dx] = p;
-        }
-    }
-}
+extern u8 SIGN;
+extern int mod;
+extern int sub_mod;
+extern uint8_t DADV;
 
 void printmod(int mod, u16 mode, u8 sign) {
     char str[3] = "   ";
@@ -373,12 +348,480 @@ void LCD_DrawCharScale(u16 x,u16 y,u16 fc, u16 bc, char num, u8 size, u16 scale)
     }
 }
 
-void LCD_DrawScale2(const Picture *pic, uint8_t scale) {
-    TempPicturePtr(temp, 18, 22);
-    for(int i = 0; i < pic->height * scale; i++) {
-        for(int j = 0; j < pic->width * scale; j++) {
-            temp->pix2[i*j] = pic->pix2[(i)*(j)];
+void pic_subset(Picture *dst, const Picture *src, int sx, int sy) {
+    int dw = dst->width;
+    int dh = dst->height;
+    if (dw + sx > src->width)
+        for(;;)
+            ;
+    if (dh + sy > src->height)
+        for(;;)
+            ;
+    for(int y=0; y<dh; y++)
+        for(int x=0; x<dw; x++)
+            dst->pix2[dw * y + x] = src->pix2[src->width * (y+sy) + x + sx];
+}
+
+void pic_overlay(Picture *dst, int xoffset, int yoffset, const Picture *src, int transparent) {
+    for(int y=0; y<src->height; y++) {
+        int dy = y+yoffset;
+        if (dy < 0 || dy >= dst->height)
+            continue;
+        for(int x=0; x<src->width; x++) {
+            int dx = x+xoffset;
+            if (dx < 0 || dx >= dst->width)
+                continue;
+            unsigned short int p = src->pix2[y*src->width + x];
+            if (p != transparent)
+                dst->pix2[dy*dst->width + dx] = p;
         }
     }
-    LCD_DrawPicture(5, 5, temp);
+}
+
+void LCD_InitUI() {
+    LCD_Clear(WHITE);
+
+//    LCD_DrawFillRectangle(13, 74, 88, 99, BLACK);
+    //LCD_DrawLine(15, 97, 33, 97, WHITE);
+//    LCD_DrawFillRectangle(122, 74, 197, 99, BLACK);
+    //LCD_DrawLine(124, 97, 142, 97, WHITE);
+//    LCD_DrawFillRectangle(231, 74, 306, 99, BLACKs);
+    //LCD_DrawLine(233, 97, 251, 97, WHITE);
+
+    LCD_DrawString(35, 58, BLACK, WHITE, "Roll", 16, 0);
+    LCD_DrawString(148, 58, BLACK, WHITE, "Mod", 16, 0);
+    LCD_DrawString(243, 58, BLACK, WHITE, "Current", 16, 0);
+
+    LCD_DrawTotal(0);
+    LCD_DrawRoll(0);
+    LCD_DrawSubMod();
+    LCD_DrawMod();
+    LCD_DrawDAdv();
+}
+
+void LCD_DrawScale2(u16 x0, u16 y0, const Picture *pic, u16 color) {
+    TempPicturePtr(temp, 18, 22);
+    for(int y = 0; y < temp->height; y++) {
+        for(int x = 0; x < temp->width; x++) {
+            if (color == 0) {
+                temp->pix2[y*temp->width + x] = pic->pix2[(y>>1)*pic->width + (x>>1)];
+            }
+            else {
+                if (pic->pix2[(y>>1)*pic->width + (x>>1)] != 65535) {
+                    temp->pix2[y*temp->width + x] = color;
+                }
+                else {
+                    temp->pix2[y*temp->width + x] = 65535;
+                }
+            }
+        }
+    }
+
+    LCD_DrawPicture(x0, y0, temp);
+}
+
+void LCD_DrawScale3(u16 x0, u16 y0, const Picture *pic, u16 color) {
+    TempPicturePtr(temp, 27, 33);
+    for(int y = 0; y < temp->height; y++) {
+        for(int x = 0; x < temp->width; x++) {
+            if (color == 0) {
+                temp->pix2[y*temp->width + x] = pic->pix2[(y/3)*pic->width + (x)/3];
+            }
+            else {
+                if (pic->pix2[(y/3)*pic->width + (x)/3] != 65535) {
+                    temp->pix2[y*temp->width + x] = color;
+                }
+                else {
+                    temp->pix2[y*temp->width + x] = 65535;
+                }
+            }
+        }
+    }
+
+    LCD_DrawPicture(x0, y0, temp);
+}
+
+void LCD_DrawScale4(u16 x0, u16 y0, const Picture *pic, u16 color) {
+    TempPicturePtr(temp, 36, 44);
+    for(int y = 0; y < temp->height; y++) {
+        for(int x = 0; x < temp->width; x++) {
+            if (color == 0) {
+                temp->pix2[y*temp->width + x] = pic->pix2[(y>>2)*pic->width + (x>>2)];
+            }
+            else {
+                if (pic->pix2[(y>>2)*pic->width + (x>>2)] != 65535) {
+                    temp->pix2[y*temp->width + x] = color;
+                }
+                else {
+                    temp->pix2[y*temp->width + x] = 65535;
+                }
+            }
+        }
+    }
+
+    LCD_DrawPicture(x0, y0, temp);
+}
+
+void LCD_DrawScale8(u16 x0, u16 y0, const Picture *pic, u16 color) {
+    TempPicturePtr(temp, 72, 88);
+    for(int y = 0; y < temp->height; y++) {
+        for(int x = 0; x < temp->width; x++) {
+            if (color == 0) {
+                temp->pix2[y*temp->width + x] = pic->pix2[(y>>3)*pic->width + (x>>3)];
+            }
+            else {
+                if (pic->pix2[(y>>3)*pic->width + (x>>3)] != 65535) {
+                    temp->pix2[y*temp->width + x] = color;
+                }
+                else {
+                    temp->pix2[y*temp->width + x] = 65535;
+                }
+            }
+        }
+    }
+
+    LCD_DrawPicture(x0, y0, temp);
+}
+
+void LCD_DrawTotal(int total) {
+    int num = total < 0 ? 0 - total : total;
+
+    u8 ones = num % 10;
+    u8 tens = (num / 10) % 10;
+    u8 huns = num / 100;
+
+    switch(huns) {
+    case 0: LCD_DrawScale8(57, 125, &lrgnum0, 0);
+            break;
+    case 1: LCD_DrawScale8(57, 125, &lrgnum1, 0);
+            break;
+    case 2: LCD_DrawScale8(57, 125, &lrgnum2, 0);
+            break;
+    case 3: LCD_DrawScale8(57, 125, &lrgnum3, 0);
+            break;
+    case 4: LCD_DrawScale8(57, 125, &lrgnum4, 0);
+            break;
+    case 5: LCD_DrawScale8(57, 125, &lrgnum5, 0);
+            break;
+    case 6: LCD_DrawScale8(57, 125, &lrgnum6, 0);
+            break;
+    case 7: LCD_DrawScale8(57, 125, &lrgnum7, 0);
+            break;
+    case 8: LCD_DrawScale8(57, 125, &lrgnum8, 0);
+            break;
+    case 9: LCD_DrawScale8(57, 125, &lrgnum9, 0);
+            break;
+    }
+
+    switch(tens) {
+    case 0: LCD_DrawScale8(141, 125, &lrgnum0, 0);
+            break;
+    case 1: LCD_DrawScale8(141, 125, &lrgnum1, 0);
+            break;
+    case 2: LCD_DrawScale8(141, 125, &lrgnum2, 0);
+            break;
+    case 3: LCD_DrawScale8(141, 125, &lrgnum3, 0);
+            break;
+    case 4: LCD_DrawScale8(141, 125, &lrgnum4, 0);
+            break;
+    case 5: LCD_DrawScale8(141, 125, &lrgnum5, 0);
+            break;
+    case 6: LCD_DrawScale8(141, 125, &lrgnum6, 0);
+            break;
+    case 7: LCD_DrawScale8(141, 125, &lrgnum7, 0);
+            break;
+    case 8: LCD_DrawScale8(141, 125, &lrgnum8, 0);
+            break;
+    case 9: LCD_DrawScale8(141, 125, &lrgnum9, 0);
+            break;
+    }
+
+    switch(ones) {
+    case 0: LCD_DrawScale8(225, 125, &lrgnum0, 0);
+            break;
+    case 1: LCD_DrawScale8(225, 125, &lrgnum1, 0);
+            break;
+    case 2: LCD_DrawScale8(225, 125, &lrgnum2, 0);
+            break;
+    case 3: LCD_DrawScale8(225, 125, &lrgnum3, 0);
+            break;
+    case 4: LCD_DrawScale8(225, 125, &lrgnum4, 0);
+            break;
+    case 5: LCD_DrawScale8(225, 125, &lrgnum5, 0);
+            break;
+    case 6: LCD_DrawScale8(225, 125, &lrgnum6, 0);
+            break;
+    case 7: LCD_DrawScale8(225, 125, &lrgnum7, 0);
+            break;
+    case 8: LCD_DrawScale8(225, 125, &lrgnum8, 0);
+            break;
+    case 9: LCD_DrawScale8(225, 125, &lrgnum9, 0);
+            break;
+    }
+
+    if (total < 0)
+        LCD_DrawCharScale(28, 155, BLACK, WHITE, '-', 7, 3);
+    else
+        LCD_DrawCharScale(28, 155, BLACK, WHITE, '+', 7, 3);
+}
+
+void LCD_DrawRoll(int roll) {
+    int num = roll < 0 ? 0 - roll : roll;
+
+    u8 ones = num % 10;
+    u8 tens = (num / 10) % 10;
+    u8 huns = num / 100;
+
+    switch(huns) {
+    case 0: LCD_DrawScale2(33, 76, &lrgnum0, RED);
+            break;
+    case 1: LCD_DrawScale2(33, 76, &lrgnum1, RED);
+            break;
+    case 2: LCD_DrawScale2(33, 76, &lrgnum2, RED);
+            break;
+    case 3: LCD_DrawScale2(33, 76, &lrgnum3, RED);
+            break;
+    case 4: LCD_DrawScale2(33, 76, &lrgnum4, RED);
+            break;
+    case 5: LCD_DrawScale2(33, 76, &lrgnum5, RED);
+            break;
+    case 6: LCD_DrawScale2(33, 76, &lrgnum6, RED);
+            break;
+    case 7: LCD_DrawScale2(33, 76, &lrgnum7, RED);
+            break;
+    case 8: LCD_DrawScale2(33, 76, &lrgnum8, RED);
+            break;
+    case 9: LCD_DrawScale2(33, 76, &lrgnum9, RED);
+            break;
+    }
+
+    switch(tens) {
+    case 0: LCD_DrawScale2(51, 76, &lrgnum0, RED);
+            break;
+    case 1: LCD_DrawScale2(51, 76, &lrgnum1, RED);
+            break;
+    case 2: LCD_DrawScale2(51, 76, &lrgnum2, RED);
+            break;
+    case 3: LCD_DrawScale2(51, 76, &lrgnum3, RED);
+            break;
+    case 4: LCD_DrawScale2(51, 76, &lrgnum4, RED);
+            break;
+    case 5: LCD_DrawScale2(51, 76, &lrgnum5, RED);
+            break;
+    case 6: LCD_DrawScale2(51, 76, &lrgnum6, RED);
+            break;
+    case 7: LCD_DrawScale2(51, 76, &lrgnum7, RED);
+            break;
+    case 8: LCD_DrawScale2(51, 76, &lrgnum8, RED);
+            break;
+    case 9: LCD_DrawScale2(51, 76, &lrgnum9, RED);
+            break;
+    }
+
+    switch(ones) {
+    case 0: LCD_DrawScale2(69, 76, &lrgnum0, RED);
+            break;
+    case 1: LCD_DrawScale2(69, 76, &lrgnum1, RED);
+            break;
+    case 2: LCD_DrawScale2(69, 76, &lrgnum2, RED);
+            break;
+    case 3: LCD_DrawScale2(69, 76, &lrgnum3, RED);
+            break;
+    case 4: LCD_DrawScale2(69, 76, &lrgnum4, RED);
+            break;
+    case 5: LCD_DrawScale2(69, 76, &lrgnum5, RED);
+            break;
+    case 6: LCD_DrawScale2(69, 76, &lrgnum6, RED);
+            break;
+    case 7: LCD_DrawScale2(69, 76, &lrgnum7, RED);
+            break;
+    case 8: LCD_DrawScale2(69, 76, &lrgnum8, RED);
+            break;
+    case 9: LCD_DrawScale2(69, 76, &lrgnum9, RED);
+            break;
+    }
+
+    if (roll < 0)
+        LCD_DrawCharScale(15, 76, RED, WHITE, '-', 7, 2);
+    else
+        LCD_DrawCharScale(15, 76, RED, WHITE, '+', 7, 2);
+}
+
+void LCD_DrawSubMod() {
+    int num = sub_mod < 0 ? 0 - sub_mod : sub_mod;
+
+    u8 ones = num % 10;
+    u8 tens = (num / 10) % 10;
+    u8 huns = num / 100;
+
+    switch(huns) {
+    case 0: LCD_DrawScale2(251, 76, &lrgnum0, 0);
+            break;
+    case 1: LCD_DrawScale2(251, 76, &lrgnum1, 0);
+            break;
+    case 2: LCD_DrawScale2(251, 76, &lrgnum2, 0);
+            break;
+    case 3: LCD_DrawScale2(251, 76, &lrgnum3, 0);
+            break;
+    case 4: LCD_DrawScale2(251, 76, &lrgnum4, 0);
+            break;
+    case 5: LCD_DrawScale2(251, 76, &lrgnum5, 0);
+            break;
+    case 6: LCD_DrawScale2(251, 76, &lrgnum6, 0);
+            break;
+    case 7: LCD_DrawScale2(251, 76, &lrgnum7, 0);
+            break;
+    case 8: LCD_DrawScale2(251, 76, &lrgnum8, 0);
+            break;
+    case 9: LCD_DrawScale2(251, 76, &lrgnum9, 0);
+            break;
+    }
+
+    switch(tens) {
+    case 0: LCD_DrawScale2(269, 76, &lrgnum0, 0);
+            break;
+    case 1: LCD_DrawScale2(269, 76, &lrgnum1, 0);
+            break;
+    case 2: LCD_DrawScale2(269, 76, &lrgnum2, 0);
+            break;
+    case 3: LCD_DrawScale2(269, 76, &lrgnum3, 0);
+            break;
+    case 4: LCD_DrawScale2(269, 76, &lrgnum4, 0);
+            break;
+    case 5: LCD_DrawScale2(269, 76, &lrgnum5, 0);
+            break;
+    case 6: LCD_DrawScale2(269, 76, &lrgnum6, 0);
+            break;
+    case 7: LCD_DrawScale2(269, 76, &lrgnum7, 0);
+            break;
+    case 8: LCD_DrawScale2(269, 76, &lrgnum8, 0);
+            break;
+    case 9: LCD_DrawScale2(269, 76, &lrgnum9, 0);
+            break;
+    }
+
+    switch(ones) {
+    case 0: LCD_DrawScale2(287, 76, &lrgnum0, 0);
+            break;
+    case 1: LCD_DrawScale2(287, 76, &lrgnum1, 0);
+            break;
+    case 2: LCD_DrawScale2(287, 76, &lrgnum2, 0);
+            break;
+    case 3: LCD_DrawScale2(287, 76, &lrgnum3, 0);
+            break;
+    case 4: LCD_DrawScale2(287, 76, &lrgnum4, 0);
+            break;
+    case 5: LCD_DrawScale2(287, 76, &lrgnum5, 0);
+            break;
+    case 6: LCD_DrawScale2(287, 76, &lrgnum6, 0);
+            break;
+    case 7: LCD_DrawScale2(287, 76, &lrgnum7, 0);
+            break;
+    case 8: LCD_DrawScale2(287, 76, &lrgnum8, 0);
+            break;
+    case 9: LCD_DrawScale2(287, 76, &lrgnum9, 0);
+            break;
+    }
+
+    if (!SIGN)
+        LCD_DrawCharScale(233, 76, BLACK, WHITE, '+', 7, 2);
+    else
+        LCD_DrawCharScale(233, 76, BLACK, WHITE, '-', 7, 2);
+}
+
+void LCD_DrawMod() {
+    int num = mod < 0 ? 0 - mod : mod;
+
+    u8 ones = num % 10;
+    u8 tens = (num / 10) % 10;
+    u8 huns = num / 100;
+
+    switch(huns) {
+    case 0: LCD_DrawScale2(142, 76, &lrgnum0, BLUE);
+            break;
+    case 1: LCD_DrawScale2(142, 76, &lrgnum1, BLUE);
+            break;
+    case 2: LCD_DrawScale2(142, 76, &lrgnum2, BLUE);
+            break;
+    case 3: LCD_DrawScale2(142, 76, &lrgnum3, BLUE);
+            break;
+    case 4: LCD_DrawScale2(142, 76, &lrgnum4, BLUE);
+            break;
+    case 5: LCD_DrawScale2(142, 76, &lrgnum5, BLUE);
+            break;
+    case 6: LCD_DrawScale2(142, 76, &lrgnum6, BLUE);
+            break;
+    case 7: LCD_DrawScale2(142, 76, &lrgnum7, BLUE);
+            break;
+    case 8: LCD_DrawScale2(142, 76, &lrgnum8, BLUE);
+            break;
+    case 9: LCD_DrawScale2(142, 76, &lrgnum9, BLUE);
+            break;
+    }
+
+    switch(tens) {
+    case 0: LCD_DrawScale2(160, 76, &lrgnum0, BLUE);
+            break;
+    case 1: LCD_DrawScale2(160, 76, &lrgnum1, BLUE);
+            break;
+    case 2: LCD_DrawScale2(160, 76, &lrgnum2, BLUE);
+            break;
+    case 3: LCD_DrawScale2(160, 76, &lrgnum3, BLUE);
+            break;
+    case 4: LCD_DrawScale2(160, 76, &lrgnum4, BLUE);
+            break;
+    case 5: LCD_DrawScale2(160, 76, &lrgnum5, BLUE);
+            break;
+    case 6: LCD_DrawScale2(160, 76, &lrgnum6, BLUE);
+            break;
+    case 7: LCD_DrawScale2(160, 76, &lrgnum7, BLUE);
+            break;
+    case 8: LCD_DrawScale2(160, 76, &lrgnum8, BLUE);
+            break;
+    case 9: LCD_DrawScale2(160, 76, &lrgnum9, BLUE);
+            break;
+    }
+
+    switch(ones) {
+    case 0: LCD_DrawScale2(178, 76, &lrgnum0, BLUE);
+            break;
+    case 1: LCD_DrawScale2(178, 76, &lrgnum1, BLUE);
+            break;
+    case 2: LCD_DrawScale2(178, 76, &lrgnum2, BLUE);
+            break;
+    case 3: LCD_DrawScale2(178, 76, &lrgnum3, BLUE);
+            break;
+    case 4: LCD_DrawScale2(178, 76, &lrgnum4, BLUE);
+            break;
+    case 5: LCD_DrawScale2(178, 76, &lrgnum5, BLUE);
+            break;
+    case 6: LCD_DrawScale2(178, 76, &lrgnum6, BLUE);
+            break;
+    case 7: LCD_DrawScale2(178, 76, &lrgnum7, BLUE);
+            break;
+    case 8: LCD_DrawScale2(178, 76, &lrgnum8, BLUE);
+            break;
+    case 9: LCD_DrawScale2(178, 76, &lrgnum9, BLUE);
+            break;
+    }
+
+    if (mod < 0)
+        LCD_DrawCharScale(124, 76, BLUE, WHITE, '-', 7, 2);
+    else
+        LCD_DrawCharScale(124, 76, BLUE, WHITE, '+', 7, 2);
+}
+
+void LCD_DrawDAdv() {
+    if (DADV == 0) {
+        LCD_DrawCharScale(240, 20, LIGHTGRAY, WHITE, 'A', 7, 2);
+        LCD_DrawCharScale(280, 20, LIGHTGRAY, WHITE, 'D', 7, 2);
+    }
+    else if (DADV == 1) {
+        LCD_DrawCharScale(240, 20, RED, WHITE, 'A', 7, 2);
+        LCD_DrawCharScale(280, 20, WHITE, WHITE, 'D', 7, 2);
+    }
+    else if (DADV == 2) {
+        LCD_DrawCharScale(240, 20, WHITE, WHITE, 'A', 7, 2);
+        LCD_DrawCharScale(280, 20, BLUE, WHITE, 'D', 7, 2);
+    }
 }

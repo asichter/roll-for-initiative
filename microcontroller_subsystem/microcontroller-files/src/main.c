@@ -26,19 +26,27 @@ uint8_t offset;
 // Roll Values
 uint8_t roll_table[64];
 uint8_t roll_table_ind = 0;
-uint8_t advantage = 0;
-uint8_t disadvantage = 255;
+int8_t advantage = 0;
+int8_t disadvantage = -1;
+
 int roll_sum = 0;
+int prev_roll_sum = 0;
+int prev_roll = 0;
+int prev_total = 0;
 
 // Configurables
 //const static char KEY_ARRAY[] = "123+456-789AC0=D";
 const static char KEY_ARRAY[] = "123A456=789MC0+R";
 int mod = 0;
+int prev_mod = 0;
 int sub_mod = 0;
+int prev_sub_mod = 0;
 uint8_t c_count = 0;
 uint8_t DADV = 0;
+uint8_t prev_DADV = 0;
 uint8_t PKG = 0;
 uint8_t SIGN = 0;
+uint8_t prev_SIGN = 0;
 uint8_t DBG = 0;
 
 extern const Picture lrgnum1;
@@ -190,6 +198,18 @@ void setup_tim6() {
     NVIC -> ISER[0] = 1 << 17;
 }
 
+void setup_tim17() {
+    RCC -> APB2ENR |= 1 << 18;
+
+    TIM17 -> PSC = 19999;
+    TIM17 -> ARR = 39;
+    TIM17 -> DIER |= 1;
+    TIM17 -> CR1 |= 1;
+
+    NVIC_SetPriority(22, 192);
+    NVIC -> ISER[0] |= 1 << 22;
+}
+
 
 // REGULAR FUNCTIONS
 // UART
@@ -245,34 +265,26 @@ void toggle_adv() {
     DADV += 1;
     if (DADV > 2)
         DADV=0;
-    printdadv(DADV);
 }
 
 void toggle_sign() {
     SIGN ^= 1;
-    printmnsign(SIGN);
 }
-
 
 void clear() {
     if (c_count == 0) {
         c_count++;
         sub_mod = 0;
-        clrmain();
+        SIGN = 0;
     } else if (c_count == 1) {
         c_count++;
         sub_mod = 0;
         mod = 0;
-        clrmain();
-        clrmod();
     } else if (c_count > 1) {
         c_count = 0;
         DADV = 0;
         sub_mod = 0;
         mod = 0;
-        clrmain();
-            clrmod();
-        clrdadv();
     }
 }
 
@@ -280,7 +292,6 @@ void modifier(int num) {
     sub_mod = (10 * sub_mod) + num;
     if (sub_mod > 999)
         sub_mod = (sub_mod/100)%10*100 + (sub_mod/10)%10*10 + (sub_mod%10);
-    printmod(sub_mod, 0, SIGN);
 }
 
 void add_mod() {
@@ -293,9 +304,6 @@ void add_mod() {
     else
         return;
 
-    printmod(mod, 1, SIGN);
-    clrmain();
-
     sub_mod = 0;
 }
 
@@ -305,16 +313,18 @@ void display_settings() {
     }
     printf("Advantage: %2d\n", DADV);
     printf("Mod: %2d\n", mod);
-    printf("Submod: %2d\n\n", sub_mod);
+    printf("Submod: %2d\n", sub_mod);
+    printf("Sign: %2d\n", SIGN);
+    printf("Roll Sum: %2d\n\n", roll_sum);
 }
 
 void handle_debug() {
-    if (history[0] == 0xff && history[7] == 0xff && history[13] == 0x3f) {
+    if (history[0] == 0xff && history[7] == 0xff && history[13] == 0x3f && DBG == 0) {
         DBG = 1;
         setup_usart5();
         printf("Debug Mode enabled.\n");
     }
-    else if (history[0] == 0xff && history[7] == 0xff && history[12] == 0x3f) {
+    else if (history[0] == 0xff && history[7] == 0xff && history[14] == 0x3f) {
         DBG = 0;
         disable_usart5();
     }
@@ -326,7 +336,8 @@ void handle_keypress(int cols) {
         int id = 4*row+i;
         if(history[id] == 0x3f) {
             char key = KEY_ARRAY[id];
-            printf("Button %2c was pushed.\n", key);
+            if (DBG == 1)
+                printf("Button %2c was pushed.\n", key);
 
             switch(key) {
             case 'A' : toggle_adv();
@@ -577,7 +588,7 @@ void USART1_IRQHandler() {
     printchr(0,0,BLUE, "420", 2, 0);
     uint8_t roll = USART1 -> RDR;
     roll_table[roll_table_ind++] = roll;
-    if(roll != 255){
+    if(roll != 255) {
         if(roll > advantage)
             advantage = roll;
         if(roll < disadvantage)
@@ -665,6 +676,50 @@ void TIM6_DAC_IRQHandler() {
     DAC -> DHR12R1 = sample;
 }
 
+void TIM17_IRQHandler() {
+    int roll;
+    int total;
+
+    if (DADV == 1) {
+        roll = advantage;
+    }
+    else if (DADV == 2) {
+        roll = disadvantage;
+    }
+    else {
+        roll = roll_sum;
+    }
+
+    total = roll + mod;
+
+    if (roll != prev_roll) {
+        LCD_DrawRoll(roll);
+    }
+
+    if (total != prev_total) {
+        LCD_DrawTotal(total);
+    }
+
+    if (DADV != prev_DADV) {
+        LCD_DrawDAdv();
+    }
+
+    if (mod != prev_mod) {
+        LCD_DrawMod();
+    }
+
+    if (sub_mod != prev_sub_mod || SIGN != prev_SIGN) {
+        LCD_DrawSubMod();
+    }
+
+    prev_roll = roll;
+    prev_total = total;
+    prev_DADV = DADV;
+    prev_mod = mod;
+    prev_sub_mod = sub_mod;
+    prev_SIGN = SIGN;
+}
+
 int main(void)
 {
     // Don't touch this
@@ -690,13 +745,15 @@ int main(void)
 
     // Debugging LCD, can be safely removed
     LCD_Init();
-    LCD_Clear(WHITE);
-    printchr(0,0,BLACK, "420", 0, 8);
+    LCD_InitUI();
+    setup_tim17();
+
+    /*printchr(0,0,BLACK, "420", 0, 8);
     printchr(0,0,RED, "69", 1, 0);
     printchr(0,0,BLUE, "666", 2, 0);
     printchr(0,0,LGRAYBLUE, "A", 3, 0);
-    printmnsign(SIGN);
-    LCD_DrawScale2(&lrgnum9, 2);
+    printmnsign(SIGN);*/
+    //LCD_DisplayUIBox(1);
     disable_usart5();
 
     for(;;) {
