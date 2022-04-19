@@ -48,8 +48,8 @@ uint8_t PKG = 0;
 uint8_t SIGN = 0;
 uint8_t prev_SIGN = 0;
 uint8_t DBG = 0;
+uint8_t prev_DBG = 0;
 
-// Font Types
 extern const Picture lrgnum1;
 extern const Picture lrgnum2;
 extern const Picture lrgnum3;
@@ -76,23 +76,8 @@ int offsetc = 0;
 int offsetd = 0;
 
 
-/*********************************************************************
-** SETUP FUNCTIONS
-**
-**  void setup_ports()              - Set pin i/o config
-**  void setup_usart5()             - USART5:   DEBUG
-**  void setup_usart1()             - USART1:   Raspberry Pi Comm
-**  void setup_exti()               - EXTI:     Infrared Sensor
-**  void setup_spi2()               - SPI2:     LCD Screen
-**  void setup_i2c1()               - I2C1:     EEPROM
-**  void setup_dac()                - DAC:      Speaker Audio
-**
-**  void setup_tim6()               - Timer 6:  DAC Speaker Audio
-**  void setup_tim7()               - Timer 7:  Keypad
-**  void setup_tim17()              - Timer 17: LCD SCreen
-**
-*********************************************************************/
 
+// SETUP FUNCTIONS
 void setup_ports() {
     RCC -> AHBENR |= 0x1e0000;
 
@@ -121,7 +106,6 @@ void setup_ports() {
     GPIOD -> AFR[0] |= 0x200;
 }
 
-// Setup USART 5 for DEBUG
 void setup_usart5() {
     RCC -> APB1ENR |= 1 << 20;
 
@@ -140,7 +124,6 @@ void disable_usart5() {
     NVIC -> ICER[0] = 1 << 29;
 }
 
-// SETUP USART 1 for Raspberry Pi Communication
 void setup_usart1(){
    RCC -> APB2ENR |= 1 << 14;
 
@@ -154,7 +137,6 @@ void setup_usart1(){
    NVIC -> ISER[0] = 1 << 27;
 }
 
-// Setup EXTI for Infrared Sensor
 void setup_exti() {
     RCC -> APB2ENR |= 1;
 
@@ -164,7 +146,6 @@ void setup_exti() {
     NVIC -> ISER[0] = 1 << 5;
 }
 
-// Setup SPI2 for LCD Screen
 void setup_spi2() {
     RCC -> APB1ENR |= 1 << 14;
 
@@ -173,7 +154,6 @@ void setup_spi2() {
     SPI2 -> CR1 |= 1 << 6;
 }
 
-// Setup Timer 7 for LCD Screen
 void setup_tim7() {
     RCC -> APB1ENR |= 1 << 5;
 
@@ -185,7 +165,6 @@ void setup_tim7() {
     NVIC -> ISER[0] = 1 << 18;
 }
 
-// Setup I2C1 for EEPROM
 void setup_i2c1() {
     RCC -> APB1ENR |= 1 << 21;
 
@@ -201,7 +180,6 @@ void setup_i2c1() {
     I2C1 -> CR1 |= 1;
 }
 
-// Setup DAC for Audio Output
 void setup_dac() {
     RCC -> APB1ENR |= 1 << 29;
 
@@ -210,7 +188,6 @@ void setup_dac() {
     DAC -> CR |= 1;
 }
 
-// Setup Timer 6 for Audio
 void setup_tim6() {
     RCC -> APB1ENR |= 1 << 4;
 
@@ -222,7 +199,6 @@ void setup_tim6() {
     NVIC -> ISER[0] = 1 << 17;
 }
 
-// Setup Timer 17 for LCD Screen
 void setup_tim17() {
     RCC -> APB2ENR |= 1 << 18;
 
@@ -236,28 +212,8 @@ void setup_tim17() {
 }
 
 
-/*********************************************************************
-** REGULAR FUNCTIONS
-**
-**      - UART
-**      - Keypad
-**      - User Interface (UI)
-**      - EEPROM
-**      - DAC
-**      - Interrupt Service Routines (ISRS)
-**
-*********************************************************************/
-
-/*********************************************************************
-** UART
-**
-** int better_putchar(int data)
-** int interrupt_getchar()
-** int __io_putchar(int ch)
-** int __io_getchar(void)
-**
-*********************************************************************/
-
+// REGULAR FUNCTIONS
+// UART
 int better_putchar(int data) {
     if(data == '\n') {
         while(((USART5 -> ISR >> 7) & 1) == 0);
@@ -283,15 +239,7 @@ int __io_getchar(void) {
     return interrupt_getchar();
 }
 
-/*********************************************************************
-** Keypad
-**
-** void set_row()
-** int get_cols()
-** void update_hist(int cols)
-**
-*********************************************************************/
-
+// Keypad
 void set_row() {
     GPIOB -> BSRR = 0xf0000;
     GPIOB -> BSRR = 1 << (offset & 3);
@@ -307,21 +255,6 @@ void update_hist(int cols) {
         history[4 * row + i] = (history[4 * row + i] << 1) + ((cols >> i) & 1);
     }
 }
-
-
-/*********************************************************************
-** User Interface
-**
-** void toggle_adv()
-** void toggle_sign()
-** void clear()
-** void modifier(int num)
-** void add_mod()
-** void display_settings()
-** void handle_debug()
-** void handle_keypress(int cols)
-**
-*********************************************************************/
 
 //===========================================================================
 // Change advantage setting
@@ -387,7 +320,7 @@ void display_settings() {
 }
 
 void handle_debug() {
-    if (history[0] == 0xff && history[7] == 0xff && history[14] == 0x3f && DBG == 0) {
+    if (history[0] == 0xff && history[7] == 0xff && history[13] == 0x3f && DBG == 0) {
         DBG = 1;
         setup_usart5();
         printf("Debug Mode enabled.\n");
@@ -441,22 +374,7 @@ void handle_keypress(int cols) {
     }
 }
 
-
-/*********************************************************************
-** EEPROM
-**
-** void i2c_start(uint32_t address, uint8_t size, uint8_t direction)
-** void i2c_stop()
-** int i2c_checknack()
-** void i2c_waitidle()
-** int8_t i2c_senddata(uint8_t address, void* p_data, uint8_t size)
-** uint8_t i2c_recvdata(uint8_t address, uint8_t* data, uint8_t size)
-** void i2c_write_flash(uint16_t loc, const char* data, uint8_t len)
-** void i2c_read_flash(uint16_t loc, char data[], uint8_t len)
-** int i2c_write_flash_complete()
-**
-*********************************************************************/
-
+// EEPROM
 void i2c_start(uint32_t address, uint8_t size, uint8_t direction) {
     uint32_t tempreg = I2C1 -> CR2;
     tempreg &= ~(I2C_CR2_SADD | I2C_CR2_NBYTES |
@@ -600,20 +518,7 @@ int i2c_write_flash_complete() {
     return 1;
 }
 
-/*********************************************************************
-** Digital to Analog Converter (DAC)
-**
-** void enable_speaker()
-** void disable_speaker()
-** void write_dac(int sample)
-** void init_wavetable()
-** void set_freq_a(float f)
-** void set_freq_b(float f)
-** void set_freq_c(float f)
-** void set_freq_d(float f)
-**
-*********************************************************************/
-
+// DAC
 void enable_speaker() {
 	GPIOA -> BRR = 1 << 15;
 	DAC -> CR |= 1;
@@ -677,19 +582,7 @@ void set_freq_d(float f) {
     }
 }
 
-/*********************************************************************
-** Interrupt Service Routines
-**
-** void USART1_IRQHandler()              - Raspberry Pi/Micro Communication
-** void USART3_4_5_6_7_8_IRQHandler()    - Debug
-** void EXTI0_1_IRQHandler()             - Infrared Detection, Triggers USART1
-** void TIM7_IRQHandler()                - Keypad Handling
-** void TIM6_DAC_IRQHandler()            - DAC Audio
-** void TIM17_IRQHandler()               - Update LCD
-**
-*********************************************************************/
-
-// Raspberry Pi / Micro Communication
+// ISRs
 void USART1_IRQHandler() {
     if(USART1 -> ISR & USART_ISR_RXNE)
         USART1 -> ICR |= USART_ISR_RXNE;
@@ -715,7 +608,7 @@ void USART1_IRQHandler() {
     }
 }
 
-// Debug Handler
+
 void USART3_4_5_6_7_8_IRQHandler() {
     if(USART5 -> ISR & 0x8) {
         USART5 -> ICR |= 0x8;
@@ -727,7 +620,7 @@ void USART3_4_5_6_7_8_IRQHandler() {
     insert_echo_char(character);
 }
 
-// Infrared Sensor Detection
+// Infrared sensor detection
 void EXTI0_1_IRQHandler() {
     EXTI -> PR = 1 << 1;
     USART1 -> TDR = 255;
@@ -736,7 +629,6 @@ void EXTI0_1_IRQHandler() {
     }
 }
 
-// Keypad Handler
 void TIM7_IRQHandler() {
     TIM7 -> SR &= ~(1);
     int cols = get_cols();
@@ -747,7 +639,6 @@ void TIM7_IRQHandler() {
     handle_debug();
 }
 
-// Audio Handler
 void TIM6_DAC_IRQHandler() {
     float sample;
 
@@ -786,7 +677,6 @@ void TIM6_DAC_IRQHandler() {
     DAC -> DHR12R1 = sample;
 }
 
-// LCD Handler
 void TIM17_IRQHandler() {
     int roll;
     int total;
@@ -823,12 +713,17 @@ void TIM17_IRQHandler() {
         LCD_DrawSubMod();
     }
 
+    if (DBG == 1 && prev_DBG == 0) {
+        LCD_DrawLadyBug();
+    }
+
     prev_roll = roll;
     prev_total = total;
     prev_DADV = DADV;
     prev_mod = mod;
     prev_sub_mod = sub_mod;
     prev_SIGN = SIGN;
+    prev_DBG = DBG;
 }
 
 int main(void)
@@ -840,16 +735,16 @@ int main(void)
 
     //Or this
     setup_ports();
+    setup_tim7();
     setup_usart5();
     //setup_usart1();
     setup_exti();
     setup_spi2();
     //setup_i2c1();
-    setup_dac();
-    init_wavetable();
-    setup_tim6();
+    //setup_dac();
+    //init_wavetable();
+    //setup_tim6();
     //disable_speaker();
-    setup_tim7();
 
     printf("Roll For Initiative.\n");
     printf("Press 1 -> B -> 0 to enter Debug Mode.\n\n");

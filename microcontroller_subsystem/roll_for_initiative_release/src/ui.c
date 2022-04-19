@@ -21,6 +21,9 @@ extern const Picture lrgnum7;
 extern const Picture lrgnum8;
 extern const Picture lrgnum9;
 extern const Picture lrgnum0;
+extern const Picture ladybug;
+
+extern uint8_t history[16];
 
 extern u8 SIGN;
 extern int mod;
@@ -278,7 +281,7 @@ void LCD_DisplayUIBox(u8 mode) {
     // Advantage
     LCD_DrawCharScale(dadv_x+2, dadv_y+3, BLACK, BLACK, 'A', 7, 2);
 
-    // Modifier Sign
+    // Modifer Sign
     LCD_DrawCharScale(mod_sign_x+4, mod_sign_y+3, GRAY, GRAY, '+', 7, 2);
 
 }
@@ -387,6 +390,15 @@ void LCD_InitUI() {
     //LCD_DrawLine(124, 97, 142, 97, WHITE);
 //    LCD_DrawFillRectangle(231, 74, 306, 99, BLACKs);
     //LCD_DrawLine(233, 97, 251, 97, WHITE);
+
+    if (history[0] == 0xff && history[7] == 0xff && history[13] == 0xff) {
+        for(;;) {
+            LCD_Clear(RED);
+            LCD_Clear(BLUE);
+            LCD_Clear(GREEN);
+            LCD_Clear(YELLOW);
+        }
+    }
 
     LCD_DrawString(35, 58, BLACK, WHITE, "Roll", 16, 0);
     LCD_DrawString(148, 58, BLACK, WHITE, "Mod", 16, 0);
@@ -824,4 +836,16 @@ void LCD_DrawDAdv() {
         LCD_DrawCharScale(240, 20, WHITE, WHITE, 'A', 7, 2);
         LCD_DrawCharScale(280, 20, BLUE, WHITE, 'D', 7, 2);
     }
+}
+
+void LCD_DrawLadyBug() {
+    TempPicturePtr(temp, 40, 40);
+
+    for(int y = 0; y < temp->height; y++) {
+        for(int x = 0; x < temp->width; x++) {
+                temp->pix2[y*temp->width + x] = ladybug.pix2[(y>>1)*ladybug.width + (x>>1)];
+        }
+    }
+
+    LCD_DrawPicture(140, 10, temp);
 }

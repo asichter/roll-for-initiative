@@ -16,6 +16,7 @@ void LCD_DrawRoll(int roll);
 void LCD_DrawSubMod();
 void LCD_DrawMod();
 void LCD_DrawDAdv();
+void LCD_DrawLadyBug();
 void printchr(u16 x,u16 y, u16 fc, const char *p, u8 elem, u8 scale);
 void printmod(int mod, u16 mode, u8 sign);
 void printdadv(const u8 p);
