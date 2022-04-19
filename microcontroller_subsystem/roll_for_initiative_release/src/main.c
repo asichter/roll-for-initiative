@@ -76,8 +76,23 @@ int offsetc = 0;
 int offsetd = 0;
 
 
+/*********************************************************************
+** SETUP FUNCTIONS
+**
+**  void setup_ports()              - Set pin i/o config
+**  void setup_usart5()             - USART5:   DEBUG
+**  void setup_usart1()             - USART1:   Raspberry Pi Comm
+**  void setup_exti()               - EXTI:     Infrared Sensor
+**  void setup_spi2()               - SPI2:     LCD Screen
+**  void setup_i2c1()               - I2C1:     EEPROM
+**  void setup_dac()                - DAC:      Speaker Audio
+**
+**  void setup_tim6()               - Timer 6:  DAC Speaker Audio
+**  void setup_tim7()               - Timer 7:  Keypad
+**  void setup_tim17()              - Timer 17: LCD SCreen
+**
+*********************************************************************/
 
-// SETUP FUNCTIONS
 void setup_ports() {
     RCC -> AHBENR |= 0x1e0000;
 
@@ -212,8 +227,28 @@ void setup_tim17() {
 }
 
 
-// REGULAR FUNCTIONS
-// UART
+/*********************************************************************
+** REGULAR FUNCTIONS
+**
+**      - UART
+**      - Keypad
+**      - User Interface (UI)
+**      - EEPROM
+**      - DAC
+**      - Interrupt Service Routines (ISRS)
+**
+*********************************************************************/
+
+/*********************************************************************
+** UART
+**
+** int better_putchar(int data)
+** int interrupt_getchar()
+** int __io_putchar(int ch)
+** int __io_getchar(void)
+**
+*********************************************************************/
+
 int better_putchar(int data) {
     if(data == '\n') {
         while(((USART5 -> ISR >> 7) & 1) == 0);
@@ -255,6 +290,20 @@ void update_hist(int cols) {
         history[4 * row + i] = (history[4 * row + i] << 1) + ((cols >> i) & 1);
     }
 }
+
+/*********************************************************************
+** User Interface
+**
+** void toggle_adv()
+** void toggle_sign()
+** void clear()
+** void modifier(int num)
+** void add_mod()
+** void display_settings()
+** void handle_debug()
+** void handle_keypress(int cols)
+**
+*********************************************************************/
 
 //===========================================================================
 // Change advantage setting
@@ -374,7 +423,21 @@ void handle_keypress(int cols) {
     }
 }
 
-// EEPROM
+/*********************************************************************
+** EEPROM
+**
+** void i2c_start(uint32_t address, uint8_t size, uint8_t direction)
+** void i2c_stop()
+** int i2c_checknack()
+** void i2c_waitidle()
+** int8_t i2c_senddata(uint8_t address, void* p_data, uint8_t size)
+** uint8_t i2c_recvdata(uint8_t address, uint8_t* data, uint8_t size)
+** void i2c_write_flash(uint16_t loc, const char* data, uint8_t len)
+** void i2c_read_flash(uint16_t loc, char data[], uint8_t len)
+** int i2c_write_flash_complete()
+**
+*********************************************************************/
+
 void i2c_start(uint32_t address, uint8_t size, uint8_t direction) {
     uint32_t tempreg = I2C1 -> CR2;
     tempreg &= ~(I2C_CR2_SADD | I2C_CR2_NBYTES |
@@ -518,7 +581,20 @@ int i2c_write_flash_complete() {
     return 1;
 }
 
-// DAC
+/*********************************************************************
+** Digital to Analog Converter (DAC)
+**
+** void enable_speaker()
+** void disable_speaker()
+** void write_dac(int sample)
+** void init_wavetable()
+** void set_freq_a(float f)
+** void set_freq_b(float f)
+** void set_freq_c(float f)
+** void set_freq_d(float f)
+**
+*********************************************************************/
+
 void enable_speaker() {
 	GPIOA -> BRR = 1 << 15;
 	DAC -> CR |= 1;
@@ -582,7 +658,18 @@ void set_freq_d(float f) {
     }
 }
 
-// ISRs
+/*********************************************************************
+** Interrupt Service Routines
+**
+** void USART1_IRQHandler()              - Raspberry Pi/Micro Communication
+** void USART3_4_5_6_7_8_IRQHandler()    - Debug
+** void EXTI0_1_IRQHandler()             - Infrared Detection, Triggers USART1
+** void TIM7_IRQHandler()                - Keypad Handling
+** void TIM6_DAC_IRQHandler()            - DAC Audio
+** void TIM17_IRQHandler()               - Update LCD
+**
+*********************************************************************/
+
 void USART1_IRQHandler() {
     if(USART1 -> ISR & USART_ISR_RXNE)
         USART1 -> ICR |= USART_ISR_RXNE;
