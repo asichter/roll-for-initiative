@@ -21,6 +21,7 @@
 "StdPeriph_Driver/src/stm32f0xx_tim.o"
 "StdPeriph_Driver/src/stm32f0xx_usart.o"
 "StdPeriph_Driver/src/stm32f0xx_wwdg.o"
+"src/audio.o"
 "src/fifo.o"
 "src/lcd.o"
 "src/lrgfnt.o"

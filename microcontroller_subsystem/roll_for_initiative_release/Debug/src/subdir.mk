@@ -4,6 +4,7 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../src/audio.c \
 ../src/fifo.c \
 ../src/lcd.c \
 ../src/lrgfnt.c \
@@ -14,6 +15,7 @@ C_SRCS += \
 ../src/ui.c 
 
 OBJS += \
+./src/audio.o \
 ./src/fifo.o \
 ./src/lcd.o \
 ./src/lrgfnt.o \
@@ -24,6 +26,7 @@ OBJS += \
 ./src/ui.o 
 
 C_DEPS += \
+./src/audio.d \
 ./src/fifo.d \
 ./src/lcd.d \
 ./src/lrgfnt.d \

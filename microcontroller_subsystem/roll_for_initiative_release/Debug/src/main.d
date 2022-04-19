@@ -33,7 +33,8 @@ src/main.o: ../src/main.c \
  C:/Users/Alex\ Sichterman/Documents/roll-for-initiative/microcontroller_subsystem/roll_for_initiative_release/inc/fifo.h \
  C:/Users/Alex\ Sichterman/Documents/roll-for-initiative/microcontroller_subsystem/roll_for_initiative_release/inc/lcd.h \
  C:/Users/Alex\ Sichterman/Documents/roll-for-initiative/microcontroller_subsystem/roll_for_initiative_release/inc/ui.h \
- C:/Users/Alex\ Sichterman/Documents/roll-for-initiative/microcontroller_subsystem/roll_for_initiative_release/inc/lcd.h
+ C:/Users/Alex\ Sichterman/Documents/roll-for-initiative/microcontroller_subsystem/roll_for_initiative_release/inc/lcd.h \
+ C:/Users/Alex\ Sichterman/Documents/roll-for-initiative/microcontroller_subsystem/roll_for_initiative_release/inc/audio.h
 
 C:/Users/Alex\ Sichterman/Documents/roll-for-initiative/microcontroller_subsystem/roll_for_initiative_release/CMSIS/device/stm32f0xx.h:
 
@@ -104,3 +105,5 @@ C:/Users/Alex\ Sichterman/Documents/roll-for-initiative/microcontroller_subsyste
 C:/Users/Alex\ Sichterman/Documents/roll-for-initiative/microcontroller_subsystem/roll_for_initiative_release/inc/ui.h:
 
 C:/Users/Alex\ Sichterman/Documents/roll-for-initiative/microcontroller_subsystem/roll_for_initiative_release/inc/lcd.h:
+
+C:/Users/Alex\ Sichterman/Documents/roll-for-initiative/microcontroller_subsystem/roll_for_initiative_release/inc/audio.h:

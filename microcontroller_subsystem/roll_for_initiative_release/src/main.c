@@ -66,6 +66,9 @@ extern const Picture lrgnum0;
 #define N 1000
 #define RATE 20000
 short int wavetable[N];
+int tim2_arr = 6000-1;
+int BPM = 60;
+int NOTE = 0;
 int volume = 2048;
 int stepa = 0;
 int stepb = 0;
@@ -75,6 +78,7 @@ int offseta = 0;
 int offsetb = 0;
 int offsetc = 0;
 int offsetd = 0;
+struct Tone * tone;
 
 
 /*********************************************************************
@@ -207,8 +211,8 @@ void setup_dac() {
 
 void setup_tim2() {
     RCC -> APB1ENR |= RCC_APB1ENR_TIM2EN;
-    TIM2 -> PSC = 48000-1;
-    TIM2 -> ARR = 200-1;
+    TIM2 -> PSC = 8000-1;
+    TIM2 -> ARR = tim2_arr;
     TIM2 -> DIER |= TIM_DIER_UIE;
     TIM2 -> CR1 &= ~TIM_CR1_CEN;        // Keep timer disabled until needed
     NVIC -> ISER[0] = 1 << TIM2_IRQn;
@@ -675,6 +679,7 @@ void set_freq_d(float f) {
 ** void USART1_IRQHandler()              - Raspberry Pi/Micro Communication
 ** void USART3_4_5_6_7_8_IRQHandler()    - Debug
 ** void EXTI0_1_IRQHandler()             - Infrared Detection, Triggers USART1
+** void TIM2_IRQHandler()                - Music parser
 ** void TIM7_IRQHandler()                - Keypad Handling
 ** void TIM6_DAC_IRQHandler()            - DAC Audio
 ** void TIM17_IRQHandler()               - Update LCD
@@ -724,6 +729,20 @@ void EXTI0_1_IRQHandler() {
     USART1 -> TDR = 255;
     if (DBG != 0) {
         printf("Obstruction detected.\n");
+    }
+}
+
+void TIM2_IRQHandler() {
+    TIM2 -> SR &= ~ TIM_SR_UIF;
+    float freq = tone[NOTE].freq;
+    float len = tone[NOTE].len;
+    set_freq_a(freq);
+    float hz = BPM / (60 * len);
+    TIM2 -> PSC = (48000000 / (hz * (tim2_arr + 1))) - 1;
+    NOTE++;
+    if (N > (sizeof(tone) / sizeof(tone[0]))){
+        NOTE = 0;
+        TIM2 -> CR1 &= ~TIM_CR1_CEN;
     }
 }
 
@@ -839,10 +858,15 @@ int main(void)
     setup_exti();
     setup_spi2();
     //setup_i2c1();
-    //setup_dac();
-    //init_wavetable();
-    //setup_tim6();
+
+    // Audio:
+    setup_dac();
+    init_wavetable();
+    setup_tim2();
+    setup_tim6();
     //disable_speaker();
+    tone = INTRO;
+    TIM2 -> CR1 |= TIM_CR1_CEN;
 
     printf("Roll For Initiative.\n");
     printf("Press 1 -> B -> 0 to enter Debug Mode.\n\n");
