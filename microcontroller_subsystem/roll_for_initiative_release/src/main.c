@@ -17,6 +17,7 @@
 #include "lcd.h"
 #include <math.h>
 #include "ui.h"
+#include "audio.h"
 
 // GLOBAL VARIABLES
 // Keypad Debouncing
@@ -87,6 +88,7 @@ int offsetd = 0;
 **  void setup_i2c1()               - I2C1:     EEPROM
 **  void setup_dac()                - DAC:      Speaker Audio
 **
+**  void setup_tim2()               - Timer 2:  Song interation
 **  void setup_tim6()               - Timer 6:  DAC Speaker Audio
 **  void setup_tim7()               - Timer 7:  Keypad
 **  void setup_tim17()              - Timer 17: LCD SCreen
@@ -201,6 +203,15 @@ void setup_dac() {
     DAC -> CR |= 1<<2;
     DAC -> CR |= 0x38;
     DAC -> CR |= 1;
+}
+
+void setup_tim2() {
+    RCC -> APB1ENR |= RCC_APB1ENR_TIM2EN;
+    TIM2 -> PSC = 48000-1;
+    TIM2 -> ARR = 200-1;
+    TIM2 -> DIER |= TIM_DIER_UIE;
+    TIM2 -> CR1 &= ~TIM_CR1_CEN;        // Keep timer disabled until needed
+    NVIC -> ISER[0] = 1 << TIM2_IRQn;
 }
 
 void setup_tim6() {
