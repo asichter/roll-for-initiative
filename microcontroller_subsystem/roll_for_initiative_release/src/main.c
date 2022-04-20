@@ -738,10 +738,16 @@ void TIM2_IRQHandler() {
     float len = tone[NOTE].len;
     set_freq_a(freq);
     float hz = BPM / (60 * len);
-    TIM2 -> PSC = (48000000 / (hz * (tim2_arr + 1))) - 1;
+    int psc = (48000000 / (hz * (tim2_arr + 1))) - 1;
+    TIM2 -> PSC = psc;
     NOTE++;
-    if (N > (sizeof(tone) / sizeof(tone[0]))){
+//    if (DBG == 1){
+        printf("Note Value: %3e\n", freq);
+        printf("Note Length: %3e\n", len);
+//    }
+    if (NOTE > sizeof(tone)){
         NOTE = 0;
+        TIM2 -> PSC = 8000-1;
         TIM2 -> CR1 &= ~TIM_CR1_CEN;
     }
 }
