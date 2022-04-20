@@ -78,7 +78,9 @@ int offseta = 0;
 int offsetb = 0;
 int offsetc = 0;
 int offsetd = 0;
-struct Tone * tone;
+struct Tone * voice_a;
+struct Tone * voice_b;
+struct Tone * voice_c;
 
 
 /*********************************************************************
@@ -734,18 +736,24 @@ void EXTI0_1_IRQHandler() {
 
 void TIM2_IRQHandler() {
     TIM2 -> SR &= ~ TIM_SR_UIF;
-    float freq = tone[NOTE].freq;
-    float len = tone[NOTE].len;
-    set_freq_a(freq);
-    float hz = BPM / (60 * len);
-    int psc = (48000000 / (hz * (tim2_arr + 1))) - 1;
+    float freq_a = voice_a[NOTE].freq;
+    float freq_b = voice_b[NOTE].freq;
+    float freq_c = voice_c[NOTE].freq;
+    int psc = voice_a[NOTE].next_psc;
+
+    set_freq_a(freq_a);
+    set_freq_b(freq_a);
+    set_freq_c(freq_a);
+
     TIM2 -> PSC = psc;
     NOTE++;
-//    if (DBG == 1){
-        printf("Note Value: %3e\n", freq);
-        printf("Note Length: %3e\n", len);
-//    }
-    if (NOTE > sizeof(tone)){
+    if (DBG == 1){
+        printf("voice_a: %3e\n", freq_a);
+        printf("voice_b: %3e\n", freq_b);
+        printf("voice_c: %3e\n", freq_c);
+        printf("psc: %d\n", psc);
+    }
+    if (NOTE > sizeof(voice_a)){
         NOTE = 0;
         TIM2 -> PSC = 8000-1;
         TIM2 -> CR1 &= ~TIM_CR1_CEN;
@@ -871,7 +879,9 @@ int main(void)
     setup_tim2();
     setup_tim6();
     //disable_speaker();
-    tone = INTRO;
+    voice_a = startup_a;
+    voice_b = startup_b;
+    voice_c = startup_c;
     TIM2 -> CR1 |= TIM_CR1_CEN;
 
     printf("Roll For Initiative.\n");
