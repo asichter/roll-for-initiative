@@ -689,6 +689,7 @@ void set_freq_d(float f) {
 *********************************************************************/
 
 void USART1_IRQHandler() {
+    NVIC -> ISER[0] |= 1 << 22;
     if(USART1 -> ISR & USART_ISR_RXNE)
         USART1 -> ICR |= USART_ISR_RXNE;
     printchr(0,0,BLUE, "420", 2, 0);
@@ -809,6 +810,7 @@ void TIM6_DAC_IRQHandler() {
 }
 
 void TIM17_IRQHandler() {
+    TIM17 -> SR &= ~TIM_SR_UIF;
     int roll;
     int total;
 
@@ -868,7 +870,7 @@ int main(void)
     setup_ports();
     setup_tim7();
     setup_usart5();
-    //setup_usart1();
+    setup_usart1();
     setup_exti();
     setup_spi2();
     //setup_i2c1();
