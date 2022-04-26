@@ -384,13 +384,6 @@ void pic_overlay(Picture *dst, int xoffset, int yoffset, const Picture *src, int
 void LCD_InitUI() {
     LCD_Clear(WHITE);
 
-//    LCD_DrawFillRectangle(13, 74, 88, 99, BLACK);
-    //LCD_DrawLine(15, 97, 33, 97, WHITE);
-//    LCD_DrawFillRectangle(122, 74, 197, 99, BLACK);
-    //LCD_DrawLine(124, 97, 142, 97, WHITE);
-//    LCD_DrawFillRectangle(231, 74, 306, 99, BLACKs);
-    //LCD_DrawLine(233, 97, 251, 97, WHITE);
-
     if (history[0] == 0xff && history[7] == 0xff && history[13] == 0xff) {
         for(;;) {
             LCD_Clear(RED);

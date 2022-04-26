@@ -27,8 +27,8 @@ uint8_t offset;
 // Roll Values
 uint8_t roll_table[64];
 uint8_t roll_table_ind = 0;
-int8_t advantage = 0;
-int8_t disadvantage = -1;
+uint8_t advantage = 0;
+uint8_t disadvantage = 255;
 
 int roll_sum = 0;
 int prev_roll_sum = 0;
@@ -81,6 +81,7 @@ int offsetd = 0;
 struct Tone * voice_a;
 struct Tone * voice_b;
 struct Tone * voice_c;
+uint8_t muted = 0;
 
 
 /*********************************************************************
@@ -139,6 +140,7 @@ void setup_usart5() {
     USART5 -> CR1 |= 0x1;
 
     while(((USART5 -> CR1 >> 2) & 3) != 3);
+    NVIC_SetPriority(29, 128);
     NVIC -> ISER[0] = 1 << 29;
 }
 
@@ -163,7 +165,7 @@ void setup_usart1(){
 void setup_exti() {
     RCC -> APB2ENR |= 1;
 
-    EXTI -> FTSR |= 1 << 1;
+    EXTI -> RTSR |= 1 << 1;
     EXTI -> IMR |= 1 << 1;
 
     NVIC -> ISER[0] = 1 << 5;
@@ -217,6 +219,7 @@ void setup_tim2() {
     TIM2 -> ARR = tim2_arr;
     TIM2 -> DIER |= TIM_DIER_UIE;
     TIM2 -> CR1 &= ~TIM_CR1_CEN;        // Keep timer disabled until needed
+    NVIC_SetPriority(TIM2_IRQn, 192);
     NVIC -> ISER[0] = 1 << TIM2_IRQn;
 }
 
@@ -228,6 +231,7 @@ void setup_tim6() {
     TIM6 -> DIER |= 1;
     TIM6 -> CR1 |= 1;
 
+    NVIC_SetPriority(17, 192);
     NVIC -> ISER[0] = 1 << 17;
 }
 
@@ -239,7 +243,7 @@ void setup_tim17() {
     TIM17 -> DIER |= 1;
     TIM17 -> CR1 |= 1;
 
-    NVIC_SetPriority(22, 192);
+    NVIC_SetPriority(22, 128);
     NVIC -> ISER[0] |= 1 << 22;
 }
 
@@ -382,7 +386,8 @@ void display_settings() {
     printf("Mod: %2d\n", mod);
     printf("Submod: %2d\n", sub_mod);
     printf("Sign: %2d\n", SIGN);
-    printf("Roll Sum: %2d\n\n", roll_sum);
+    printf("Roll Sum: %2d\n", roll_sum);
+    printf("Muted: %2d\n\n", muted);
 }
 
 void handle_debug() {
@@ -422,7 +427,12 @@ void handle_keypress(int cols) {
             case '=' : mod = SIGN == 0 ? mod + sub_mod : mod - sub_mod;
                        sub_mod = 0;
                        break;
-            case 'M' : // Mute speaker
+            case 'M' : if (muted == 0) {
+                           disable_speaker();
+                       }
+                       else {
+                           enable_speaker();
+                       }
                        break;
             case 'R' : // Reroll
                        break;
@@ -613,15 +623,17 @@ int i2c_write_flash_complete() {
 *********************************************************************/
 
 void enable_speaker() {
-	GPIOA -> BRR = 1 << 15;
-	DAC -> CR |= 1;
-	TIM6 -> CR1 |= 1;
+    GPIOA -> BSRR = 1 << 15;
+    DAC -> CR |= 1;
+    TIM6 -> CR1 |= 1;
+    muted = 0;
 }
 
 void disable_speaker() {
-	GPIOA -> BSRR = 1 << 15;
-	DAC -> CR &= ~(0x1);
-	TIM6 -> CR1 &= ~(0x1);
+    GPIOA -> BRR = 1 << 15;
+    DAC -> CR &= ~(0x1);
+    TIM6 -> CR1 &= ~(0x1);
+    muted = 1;
 }
 
 void write_dac(int sample) {
@@ -689,29 +701,24 @@ void set_freq_d(float f) {
 *********************************************************************/
 
 void USART1_IRQHandler() {
-    NVIC -> ISER[0] |= 1 << 22;
-    if(USART1 -> ISR & USART_ISR_RXNE)
-        USART1 -> ICR |= USART_ISR_RXNE;
-    printchr(0,0,BLUE, "420", 2, 0);
+    if(USART1 -> ISR & 0x8)
+        USART1 -> ICR |= 0x8;
     uint8_t roll = USART1 -> RDR;
-    roll_table[roll_table_ind++] = roll;
-    if(roll != 255) {
+    //roll_table[roll_table_ind++] = roll;
+    //if(roll != 255) {
         if(roll > advantage)
             advantage = roll;
         if(roll < disadvantage)
             disadvantage = roll;
         roll_sum += roll;
-    } else {
-        roll_table_ind = 0;
-        if (DBG != 0) {
+    //} else {
+        //roll_table_ind = 0;
+        /*if (DBG != 0) {
             for(int i = 0; roll_table[i] != 255; i++) {
                 printf("%d\n", roll_table[i]);
             }
-        }
-        advantage = 0;
-        disadvantage = 255;
-        roll_sum = 0;
-    }
+        }*/
+    //}
 }
 
 
@@ -730,6 +737,11 @@ void USART3_4_5_6_7_8_IRQHandler() {
 void EXTI0_1_IRQHandler() {
     EXTI -> PR = 1 << 1;
     USART1 -> TDR = 255;
+
+    roll_sum = 0;
+    advantage = 0;
+    disadvantage = 255;
+
     if (DBG != 0) {
         printf("Obstruction detected.\n");
     }
@@ -772,10 +784,10 @@ void TIM7_IRQHandler() {
 }
 
 void TIM6_DAC_IRQHandler() {
-    float sample;
-
     TIM6 -> SR &= ~(1);
     DAC -> SWTRIGR |= 1;
+
+    float sample;
 
     offseta += stepa;
     offsetb += stepb;
@@ -811,6 +823,7 @@ void TIM6_DAC_IRQHandler() {
 
 void TIM17_IRQHandler() {
     TIM17 -> SR &= ~TIM_SR_UIF;
+
     int roll;
     int total;
 
@@ -818,7 +831,7 @@ void TIM17_IRQHandler() {
         roll = advantage;
     }
     else if (DADV == 2) {
-        roll = disadvantage;
+        roll = disadvantage == 255 ? 0 : disadvantage;
     }
     else {
         roll = roll_sum;
@@ -866,7 +879,7 @@ int main(void)
     setbuf(stdout, 0);
     setbuf(stderr, 0);
 
-    //Or this
+    // Setting up peripherals
     setup_ports();
     setup_tim7();
     setup_usart5();
@@ -875,31 +888,28 @@ int main(void)
     setup_spi2();
     //setup_i2c1();
 
-    // Audio:
+    // Terminal output at startup
+    printf("Roll For Initiative.\n");
+    printf("Press 1 -> B -> 0 to enter Debug Mode.\n\n");
+
+    // Initializing LCD
+    LCD_Init();
+    LCD_InitUI();
+    setup_tim17();
+
+    // Initializing DAC
     setup_dac();
     init_wavetable();
     setup_tim2();
     setup_tim6();
-    //disable_speaker();
+    enable_speaker();
+    // Debugging for DAC
     voice_a = startup_a;
     voice_b = startup_b;
     voice_c = startup_c;
     TIM2 -> CR1 |= TIM_CR1_CEN;
 
-    printf("Roll For Initiative.\n");
-    printf("Press 1 -> B -> 0 to enter Debug Mode.\n\n");
-
-    // Debugging LCD, can be safely removed
-    LCD_Init();
-    LCD_InitUI();
-    setup_tim17();
-
-    /*printchr(0,0,BLACK, "420", 0, 8);
-    printchr(0,0,RED, "69", 1, 0);
-    printchr(0,0,BLUE, "666", 2, 0);
-    printchr(0,0,LGRAYBLUE, "A", 3, 0);
-    printmnsign(SIGN);*/
-    //LCD_DisplayUIBox(1);
+    // Disabling UART5 until debug mode is enabled
     disable_usart5();
 
     for(;;) {
