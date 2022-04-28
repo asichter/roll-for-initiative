@@ -78,6 +78,7 @@ int offseta = 0;
 int offsetb = 0;
 int offsetc = 0;
 int offsetd = 0;
+int song_length = 0;
 struct Tone * voice_a;
 struct Tone * voice_b;
 struct Tone * voice_c;
@@ -687,6 +688,26 @@ void set_freq_d(float f) {
     }
 }
 
+void play_startup() {
+    NOTE = 0;
+    enable_speaker();
+    song_length = sizeof(startup_a) / sizeof(startup_a[0]);
+    voice_a = startup_a;
+    voice_b = startup_b;
+    voice_c = startup_c;
+    TIM2 -> CR1 |= TIM_CR1_CEN;
+}
+
+void play_roll20() {
+    NOTE = 0;
+    enable_speaker();
+    song_length = sizeof(roll20_a) / sizeof(roll20_a[0]);
+    voice_a = roll20_a;
+    voice_b = roll20_b;
+    voice_c = roll20_c;
+    TIM2 -> CR1 |= TIM_CR1_CEN;
+}
+
 /*********************************************************************
 ** Interrupt Service Routines
 **
@@ -704,21 +725,15 @@ void USART1_IRQHandler() {
     if(USART1 -> ISR & 0x8)
         USART1 -> ICR |= 0x8;
     uint8_t roll = USART1 -> RDR;
-    //roll_table[roll_table_ind++] = roll;
-    //if(roll != 255) {
-        if(roll > advantage)
-            advantage = roll;
-        if(roll < disadvantage)
-            disadvantage = roll;
-        roll_sum += roll;
-    //} else {
-        //roll_table_ind = 0;
-        /*if (DBG != 0) {
-            for(int i = 0; roll_table[i] != 255; i++) {
-                printf("%d\n", roll_table[i]);
-            }
-        }*/
-    //}
+    if(roll > advantage)
+        advantage = roll;
+    if(roll < disadvantage)
+        disadvantage = roll;
+    roll_sum += roll;
+
+    if (roll == 20) {
+        play_roll20();
+    }
 }
 
 
@@ -755,8 +770,8 @@ void TIM2_IRQHandler() {
     int psc = voice_a[NOTE].next_psc;
 
     set_freq_a(freq_a);
-    set_freq_b(freq_a);
-    set_freq_c(freq_a);
+    set_freq_b(freq_b);
+    set_freq_c(freq_c);
 
     TIM2 -> PSC = psc;
     NOTE++;
@@ -766,10 +781,15 @@ void TIM2_IRQHandler() {
         printf("voice_c: %3e\n", freq_c);
         printf("psc: %d\n", psc);
     }
-    if (NOTE > sizeof(voice_a)){
-        NOTE = 0;
+
+    if (NOTE > song_length){
         TIM2 -> PSC = 8000-1;
         TIM2 -> CR1 &= ~TIM_CR1_CEN;
+        set_freq_a(0);
+        set_freq_b(0);
+        set_freq_c(0);
+        disable_speaker();
+        TIM2 -> CR1 &= ~(TIM_CR1_CEN);
     }
 }
 
@@ -902,12 +922,8 @@ int main(void)
     init_wavetable();
     setup_tim2();
     setup_tim6();
-    enable_speaker();
-    // Debugging for DAC
-    voice_a = startup_a;
-    voice_b = startup_b;
-    voice_c = startup_c;
-    TIM2 -> CR1 |= TIM_CR1_CEN;
+    play_startup();
+//    play_roll20();
 
     // Disabling UART5 until debug mode is enabled
     disable_usart5();
