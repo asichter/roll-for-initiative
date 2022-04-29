@@ -22,6 +22,7 @@ extern const Picture lrgnum8;
 extern const Picture lrgnum9;
 extern const Picture lrgnum0;
 extern const Picture ladybug;
+extern const Picture chunky;
 
 extern uint8_t history[16];
 
@@ -384,14 +385,14 @@ void pic_overlay(Picture *dst, int xoffset, int yoffset, const Picture *src, int
 void LCD_InitUI() {
     LCD_Clear(WHITE);
 
-    if (history[0] == 0xff && history[7] == 0xff && history[13] == 0xff) {
+    /*if (history[0] == 0xff && history[7] == 0xff && history[13] == 0xff) {
         for(;;) {
             LCD_Clear(RED);
             LCD_Clear(BLUE);
             LCD_Clear(GREEN);
             LCD_Clear(YELLOW);
         }
-    }
+    }*/
 
     LCD_DrawString(35, 58, BLACK, WHITE, "Roll", 16, 0);
     LCD_DrawString(148, 58, BLACK, WHITE, "Mod", 16, 0);
@@ -841,4 +842,8 @@ void LCD_DrawLadyBug() {
     }
 
     LCD_DrawPicture(140, 10, temp);
+}
+
+void LCD_DrawChunky() {
+    LCD_DrawPicture(0, 0, &chunky);
 }

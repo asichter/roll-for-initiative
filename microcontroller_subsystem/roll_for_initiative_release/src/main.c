@@ -21,6 +21,7 @@
 
 // GLOBAL VARIABLES
 // Keypad Debouncing
+uint8_t boot_ready = 0;
 uint8_t history[16];
 uint8_t offset;
 
@@ -42,7 +43,7 @@ int mod = 0;
 int prev_mod = 0;
 int sub_mod = 0;
 int prev_sub_mod = 0;
-uint8_t c_count = 0;
+uint8_t c_count = 3;
 uint8_t DADV = 0;
 uint8_t prev_DADV = 0;
 uint8_t PKG = 0;
@@ -435,7 +436,7 @@ void handle_keypress(int cols) {
                            enable_speaker();
                        }
                        break;
-            case 'R' : // Reroll
+            case 'R' : USART1 -> TDR = 255;
                        break;
             default:   PKG = 1;
                        modifier(key - '0');
@@ -725,6 +726,14 @@ void USART1_IRQHandler() {
     if(USART1 -> ISR & 0x8)
         USART1 -> ICR |= 0x8;
     uint8_t roll = USART1 -> RDR;
+
+    if(boot_ready == 0) {
+        if(roll == 65) {
+            boot_ready = 1;
+        }
+        return;
+    }
+
     if(roll > advantage)
         advantage = roll;
     if(roll < disadvantage)
@@ -770,8 +779,8 @@ void TIM2_IRQHandler() {
     int psc = voice_a[NOTE].next_psc;
 
     set_freq_a(freq_a);
-    set_freq_b(freq_b);
-    set_freq_c(freq_c);
+    set_freq_b(freq_a);
+    set_freq_c(freq_a);
 
     TIM2 -> PSC = psc;
     NOTE++;
@@ -901,19 +910,26 @@ int main(void)
 
     // Setting up peripherals
     setup_ports();
-    setup_tim7();
-    setup_usart5();
     setup_usart1();
-    setup_exti();
     setup_spi2();
-    //setup_i2c1();
+    LCD_Init();
+    LCD_DrawChunky();
+    setup_tim7();
+
+    while (boot_ready == 0) {
+        asm volatile ("wfi");
+        if (history[0] == 0xff && history[7] == 0xff && history[14] == 0xff)
+            break;
+    }
+
+    setup_usart5();
+    setup_exti();
 
     // Terminal output at startup
     printf("Roll For Initiative.\n");
     printf("Press 1 -> B -> 0 to enter Debug Mode.\n\n");
 
     // Initializing LCD
-    LCD_Init();
     LCD_InitUI();
     setup_tim17();
 
@@ -923,6 +939,7 @@ int main(void)
     setup_tim2();
     setup_tim6();
     play_startup();
+    clear();
 //    play_roll20();
 
     // Disabling UART5 until debug mode is enabled
