@@ -1,14 +1,13 @@
-import cv2 as cv
-import diceRecognition
-import os
+from diceRec import *
+#import os
+#import cv2 as cv
 
-for image in os.listdir("/home/pi/Desktop/crop/"):
-    img = cv.imread("/home/pi/Desktop/crop/" + image)
-    img = diceRecognition.resize(img,size=(64,64))
-    diceRecognition.show_roll(img)
-    #img = diceRecognition.rotate(img)
-    diceRecognition.show_roll(img)
-    img = diceRecognition.convert_to_RGB(img)
-    #img = diceRecognition.binary_threshold(img)
-    cv.imwrite("/home/pi/Desktop/test-resize/resized.jpg",img)
-    os.system('python3 OCR.py')
+for img in os.listdir("training/"):
+    image = cv.imread("training/" + img)
+    image = resize(image)
+    cv.imwrite("training2/" + img,image)
+
+for img in os.listdir("testing/"):
+    image = cv.imread("testing/" + img)
+    image = resize(image)
+    cv.imwrite("testing2/" + img,image)
