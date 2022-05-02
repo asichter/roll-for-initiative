@@ -12,7 +12,11 @@ import argparse
 '''def grayscale(img):
     return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)'''
 
-'''def resize(img,size=(100,100)):
+def binary_threshold(img):
+    ret,thresh = cv2.threshold(img,127,255,cv2.THRESH_BINARY)
+    return thresh
+
+def resize(img,size=(100,100)):
     h, w = img.shape[:2]
     c = img.shape[2] if len(img.shape)>2 else 1
 
@@ -42,7 +46,7 @@ import argparse
         mask = np.zeros((dif, dif, c), dtype=img.dtype)
         mask[y_pos:y_pos+h, x_pos:x_pos+w, :] = img[:h, :w, :]
 
-    return cv2.resize(mask, size, interpolation)'''
+    return cv2.resize(mask, size, interpolation)
 
 
 def label(img):
@@ -55,10 +59,11 @@ def label(img):
 if __name__ == "__main__":
     trainingData = []
     trainingLabel = []
-    for i,img in enumerate(os.listdir("training/")):
+    for i,img in enumerate(os.listdir("training5/")):
         #print(img)
         #print(i)
-        image = Image.open("training/" + img)
+        image = Image.open("training5/" + img)
+        #image = resize(image)
         img2vec = Img2Vec(cuda=False)
         vec = img2vec.get_vec(image, tensor=True).detach().numpy()
         vec = vec.reshape(512)
@@ -68,9 +73,10 @@ if __name__ == "__main__":
         trainingLabel.append(imgLabel)
     testingData = []
     testingLabel = []
-    for img in os.listdir("testing/"):
+    for img in os.listdir("testing5/"):
         #print(img)
-        image = Image.open("testing/" + img)
+        image = Image.open("testing5/" + img)
+        #image = resize(image)
         img2vec = Img2Vec(cuda=False)
         vec = img2vec.get_vec(image, tensor=True).detach().numpy()
         vec = vec.reshape(512)
@@ -81,7 +87,7 @@ if __name__ == "__main__":
     print("X-train after reshape: " + str(X_train.shape))
     knn = neighbors.KNeighborsClassifier(n_neighbors=1)
     knn.fit(X_train,Y_train)
-    recog = open('diceRec','wb')
+    recog = open('diceRec5','wb')
     pickle.dump(knn,recog)
 
     X_test = np.array(testingData)
@@ -91,3 +97,4 @@ if __name__ == "__main__":
     print(result)
     score = knn.score(X_test,Y_test)
     print("Score: " + str(score*100))
+
