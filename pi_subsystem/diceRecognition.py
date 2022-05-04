@@ -1,11 +1,12 @@
 import os
 from platform import java_ver
-from picamera import PiCamera
 from time import sleep
 import cv2 as cv
 import numpy as np
 import argparse
-import imutils
+from img2vec_pytorch import Img2Vec
+from PIL import Image
+import pickle
 
 
 # for debugging
@@ -15,11 +16,11 @@ def show_roll(roll):
     cv.waitKey(0)
 
 def get_roll():
-    roll_img = cv.imread("/home/pi/Desktop/temp/temp.jpg")
+    roll_img = cv.imread("/home/asichter/Desktop/temp/temp.jpg")
     return roll_img
 
 def get_contours(roll):
-    _,contours,_ = cv.findContours(roll,mode=cv.RETR_EXTERNAL,method=cv.CHAIN_APPROX_NONE)         
+    contours,_ = cv.findContours(roll,mode=cv.RETR_EXTERNAL,method=cv.CHAIN_APPROX_NONE)         
     return contours
 
 # for debugging
@@ -29,25 +30,21 @@ def draw_contours(roll,contours):
     return contourRoll
 
 def take_picture():
-    camera = PiCamera()
-    #camera.start_preview()
-    camera.capture("/home/pi/Desktop/temp/temp.jpg")
-    #camera.stop_preview()
-    camera.close()
+    os.system("libcamera-jpeg -o /home/asichter/Desktop/temp/temp.jpg --nopreview --shutter 10000 > /dev/null 2>&1")
 
 def convert_grayscale(roll):
-    grayscale_roll = cv.cvtColor(roll,cv.COLOR_BGR2GRAY)
+    grayscale_roll = cv.cvtColor(roll,cv.COLOR_RGB2GRAY)
     return grayscale_roll
 
 def binary_threshold(roll):
-    ret,thresh = cv.threshold(roll,127,255,0)
+    ret,thresh = cv.threshold(roll,127,255,cv.THRESH_BINARY)
     return thresh
 
 def convert_to_RGB(roll):
     converted_roll = cv.cvtColor(roll,cv.COLOR_BGR2RGB)
     return converted_roll
 
-def resize(img,size=(64,64)):
+def resize(img,size=(100,100)):
     h, w = img.shape[:2]
     c = img.shape[2] if len(img.shape)>2 else 1
 
@@ -58,10 +55,6 @@ def resize(img,size=(64,64)):
         dif = h
     else:
         dif = w
-    #dif = h if h > w else w
-
-    #interpolation = cv.INTER_AREA if dif > (size[0]+size[1])//2 else 
-    #                cv.INTER_CUBIC
 
     if dif > (size[0] + size[1]) // 2:
         interpolation = cv.INTER_AREA
@@ -80,61 +73,82 @@ def resize(img,size=(64,64)):
 
     return cv.resize(mask, size, interpolation)
 
-def rotate(image):
-
-    pass
-
 def process():
-    take_picture()
+    os.system("rm /home/asichter/Desktop/crop/*.*")
+    loaded_model = pickle.load(open('diceRec3','rb'))
+    roll = take_picture()
     roll = get_roll()
+    #show_roll(roll)
     process_roll = convert_grayscale(roll)
     thresh = binary_threshold(process_roll)
     contours = get_contours(thresh)
-    roll_countours = draw_contours(roll, contours)
-    
-    dice_pictures = []
-    for c in contours:
+    contourRoll = draw_contours(roll,contours)
+    save_image(contourRoll,"contours")
+    i = 0
+    values = []
+    for cnt in contours:
         x,y,w,h = cv.boundingRect(cnt)
         crop = roll[y:y+h,x:x+w]
         cropped = convert_to_RGB(crop)
-        dice_pictures.append(cropped)
+        if cropped.shape[0] < 100 and cropped.shape[1] < 100:
+            continue
+        cropped = resize(cropped)
+        cropped  = binary_threshold(cropped)
+        save_image(cropped,i) 
+        image = Image.open("/home/asichter/Desktop/crop/cropped" + str(i) + ".jpg")
+        test = convert_vec(image)
+        values.append(loaded_model.predict(test)[0])
+        print("crop" + str(i) + ".jpg : " + str(loaded_model.predict(test)))
+        i += 1
+    return values
 
-    return dice_pictures
+def convert_vec(image):
+    test = []
+    img2vec = Img2Vec(cuda=False)
+    vec = img2vec.get_vec(image, tensor=True).detach().numpy()
+    vec = vec.reshape(512)
+    test.append(vec)
+    test = np.array(test)
+    return test
+
+def save_image(img,i):
+    cv.imwrite("/home/asichter/Desktop/crop/cropped" + str(i) + ".jpg",img)
+
+
 
 
 if __name__ == "__main__":
-    #sleep(1)
-    #parser = argparse.ArgumentParser()
-    #parser.add_argument('PicName')
-    #args = parser.parse_args()
+    os.system("rm /home/asichter/Desktop/crop/*.*")
+    loaded_model = pickle.load(open('diceRec3','rb'))
     take_picture()
     roll = get_roll()
+    save_image(roll,"raw")
     process_roll = convert_grayscale(roll)
     thresh = binary_threshold(process_roll)
     contours = get_contours(thresh)
     i = 0
     contourRoll = draw_contours(roll,contours)
-    show_roll(contourRoll)
+    save_image(contourRoll,"contours")
+    values = []
     for cnt in contours:
         x,y,w,h = cv.boundingRect(cnt)
         crop = roll[y:y+h,x:x+w]
         cropped = convert_to_RGB(crop)
-        cropped = resize(cropped,size=(64,64))
-        cropped = binary_threshold(cropped)
-        highest =  [cropped,0]
-        show_roll(cropped)
-        for i in range(0,9):
-            cropped = imutils.rotate(cropped,45)
-            show_roll(cropped)
-            cv.imwrite("/home/pi/Desktop/crop/cropped.jpg".format(i),cropped)
-            os.system('python3 OCR.py')
-        #cv.imwrite("/home/pi/Desktop/crop/cropped.jpg".format(i),cropped)
-        #os.system('python3 OCR.py')
-        #cv.imwrite("/home/pi/Desktop/knn-training2/{name}.jpg".format(name=args.PicName),crop)
-        #cv.imwrite("/home/pi/Desktop/{name}.jpg".format(name=args.PicName),crop)
+        if cropped.shape[0] < 100 and cropped.shape[1] < 100:
+            continue
+        cropped = resize(cropped)
+        cropped  = binary_threshold(cropped)
+        save_image(cropped,i) 
+        image = Image.open("/home/asichter/Desktop/crop/cropped" + str(i) + ".jpg")
+        test = convert_vec(image)
+        #values.append(loaded_model.predict(test))
+        print("crop" + str(i) + ".jpg : " + str(loaded_model.predict(test)))
+        i += 1
+    #print(values)
 
 
 
 
+    
 
     
